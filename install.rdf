@@ -10,7 +10,7 @@
     <em:description>Adds convertible citation marker support to Zotero.</em:description>
     <em:aboutURL>chrome://rtf-odf-scan-for-zotero/content/about.xul</em:aboutURL>
     <em:optionsURL>chrome://rtf-odf-scan-for-zotero/content/options.xul</em:optionsURL>
-    <em:updateURL>https://Zotero-ODF-Scan.github.io/zotero-odf-scan/rtf-odf-scan-for-zotero.rdf</em:updateURL>
+    <em:updateURL>https://juris-m.github.io/zotero-odf-scan-plugin/update.rdf</em:updateURL>
     <em:bootstrap>true</em:bootstrap>
     <em:unpack>true</em:unpack>
     <em:targetApplication>
