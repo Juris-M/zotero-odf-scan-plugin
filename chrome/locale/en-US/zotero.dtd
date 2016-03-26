@@ -1,0 +1,34 @@
+<!ENTITY zotero.odfScan.introPage.description.start "Zotero can convert citation markers in the drag-and-drop Scannable Cite format to active Zotero citations. Citation markers can be edited after creation to add prefix, suffix and pinpoint details, as illustrated below. For further details, see the ">
+<!ENTITY zotero.odfScan.introPage.link "project website">
+<!ENTITY zotero.odfScan.introPage.description.end ".">
+<!ENTITY zotero.toolbar.rtfOdfScan.label "RTF/ODF Scan">
+<!ENTITY zotero.odfScan.introPage.description2 "To get started, select an ODF input file and an output file below:">
+<!ENTITY zotero.odfScan.introPage.example1 "&#8627; Explanatory prefix in first field, readable cite in second field.">
+<!ENTITY zotero.odfScan.introPage.example2 "&#8627; Page pinpoint in third field, explanatory suffix in fourth field.">
+<!ENTITY zotero.odfScan.introPage.example3 "&#8627; Minus sign at start of readable cite field suppresses author.">
+<!ENTITY zotero.bibliography.style.label "Citation Style:">
+<!ENTITY zotero.file.choose.label "Choose File…">
+<!ENTITY zotero.file.noneSelected.label "No file selected">
+<!ENTITY zotero.integration.prefs.displayAs.label "Display Citations As:">
+<!ENTITY zotero.integration.prefs.endnotes.label "Endnotes">
+<!ENTITY zotero.integration.prefs.footnotes.label "Footnotes">
+<!ENTITY zotero.rtfScan.ambiguousCitations.label "Ambiguous Citations">
+<!ENTITY zotero.rtfScan.citation.label "Citation">
+<!ENTITY zotero.rtfScan.citationsPage.description "Please review the list of recognized citations below to ensure that Zotero has selected the corresponding items correctly. Any unmapped or ambiguous citations must be resolved before proceeding to the next step.">
+<!ENTITY zotero.rtfScan.citationsPage.label "Verify Cited Items">
+<!ENTITY zotero.rtfScan.completePage.description "Your document has now been scanned and processed. Please ensure that it is formatted correctly.">
+<!ENTITY zotero.rtfScan.completePage.label "Document Scan Complete">
+<!ENTITY zotero.rtfScan.formatPage.description "Zotero is processing and formatting your RTF file. Please be patient.">
+<!ENTITY zotero.rtfScan.formatPage.label "Formatting Citations">
+<!ENTITY zotero.rtfScan.inputFile.label "Input File">
+<!ENTITY zotero.rtfScan.introPage.description "Zotero can automatically extract and reformat citations and insert a bibliography into RTF files. The RTF Scan feature currently supports citations in variations upon the following formats:">
+<!ENTITY zotero.rtfScan.introPage.description2 "To get started, select an RTF input file and an output file below:">
+<!ENTITY zotero.rtfScan.introPage.label "Introduction">
+<!ENTITY zotero.rtfScan.itemName.label "Item Name">
+<!ENTITY zotero.rtfScan.mappedCitations.label "Mapped Citations">
+<!ENTITY zotero.rtfScan.outputFile.label "Output File">
+<!ENTITY zotero.rtfScan.scanPage.description "Zotero is scanning your document for citations. Please be patient.">
+<!ENTITY zotero.rtfScan.scanPage.label "Scanning for Citations">
+<!ENTITY zotero.rtfScan.stylePage.label "Document Formatting">
+<!ENTITY zotero.rtfScan.title "RTF Scan">
+<!ENTITY zotero.rtfScan.unmappedCitations.label "Unmapped Citations">

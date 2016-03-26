@@ -1,0 +1,3 @@
+content   rtf-odf-scan-for-zotero                 chrome/content/
+skin      rtf-odf-scan-for-zotero   default   chrome/skin/
+locale    rtf-odf-scan-for-zotero   en-US         chrome/locale/en-US/
