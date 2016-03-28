@@ -11,7 +11,7 @@ FORK="zotero-odf-scan-plugin"
 BRANCH="master"
 CLIENT="zotero-odf-scan"
 VERSION_ROOT="1.0."
-SIGNED_STUB="propachi_replace_zotero_csl_processor_std_ver-"
+SIGNED_STUB="rtfodf_scan_for_zotero-"
 
 function fix-content () {
     cat about.tmpl | sed -e "s/##REVISION##/${VERSION}/" > chrome/content/about.xul
