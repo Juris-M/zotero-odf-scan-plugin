@@ -548,7 +548,9 @@ var Zotero_RTFScan = new function() {
 		}
 
 		ODFConv.prototype.rejoin = function (lst) {
-			this.content = [lst[i].txt for (i in lst)].join("");
+			this.content = lst.map(function(obj){
+                return obj.txt;
+            }).join("");
 		}
 
 		ODFConv.prototype.tidy = function () {
@@ -1068,7 +1070,9 @@ var Zotero_RTFScan = new function() {
 				var m = initialRe.exec(firstName);
 				if(m) {
 					var initials = firstName.replace(/[^A-Z]/g, "");
-					var itemInitials = [name[0].toUpperCase() for each (name in itemCreator.ref.firstName.split(/ +/g))].join("");
+					var itemInitials = itemCreator.ref.firstName.split(/ +/g).map(function(name){
+                        return name[0].toUpperCase();
+                    }).join("");
 					if(initials != itemInitials) return false;
 				} else {
 					// not all initials; verify that the first name matches
@@ -1190,7 +1194,8 @@ var Zotero_RTFScan = new function() {
 	 */
 	function _refreshCanAdvance() {
 		var canAdvance = true;
-		for each(var itemList in citationItemIDs) {
+        for (var i=0,ilen=citationItemIDs.length;i<ilen;i++) {
+            var itemList = citationItemIDs[i];
 			if(itemList.length != 1) {
 				canAdvance = false;
 				break;
@@ -1310,7 +1315,9 @@ var Zotero_RTFScan = new function() {
 		}
 		//Zotero.debug(cslCitations);
 		
-		itemIDs = [itemID for(itemID in itemIDs)];
+		itemIDs = itemIDs.map(function(obj){
+            return obj;
+        });
 		//Zotero.debug(itemIDs);
 		
 		// prepare the list of rendered citations
