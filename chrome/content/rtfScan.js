@@ -389,7 +389,7 @@ var Zotero_RTFScan = new function() {
 				var m_citation = m[1];
 				var m_plaintext = this.removeBalancedTags(m[2]);
 				var replacement = "";
-				var obj_txt = m_citation.replace("&quot;", '"', "g");
+				var obj_txt = m_citation.split("&quot;").join('"');
 				var obj = JSON.parse(obj_txt);
 				var count = 1;
 				for (var i=0,ilen=obj.citationItems.length;i<ilen;i+=1) {
@@ -466,7 +466,7 @@ var Zotero_RTFScan = new function() {
 					for (var j=0,jlen=3;j<jlen;j+=1) {
 					var key = ["prefix","suffix","locator"][j];
 						if ("string" === typeof item[key]) {
-							item[key] = item[key].replace("&quot;",'"', "g");
+							item[key] = item[key].split("&quot;").join('"');
 							item[key] = item[key].replace(/&lt;i&gt;(.*?)&lt;\/i&gt;/g, "*$1*");
 							item[key] = item[key].replace(/&lt;b&gt;(.*?)&lt;\/b&gt;/g, "**$1**");
 						}
@@ -485,7 +485,7 @@ var Zotero_RTFScan = new function() {
 		Fragment.prototype.finalize = function (msg) {
 			var m = this.newtxt.match(checkStringRex);
 			if (m) {
-				this.txt = this.newtxt.replace("\n"," ","g");
+				this.txt = this.newtxt.split(/[\n\r]+/).join(" ");
 				if (msg) {
 					dump("XXX [" + msg + "]: " + this.txt+"\n");
 				}
@@ -601,7 +601,7 @@ var Zotero_RTFScan = new function() {
 			var placeholder = [];
 			for (var i=m.length-1;i>-1;i+=-1) {
 				var item = {};
-				var plaintextcite = m[i][1].replace(/^\s+/,"").replace(/\s+$/,"");
+				var plaintextcite = m[i][1].replace(/^\s+/,"").replace(/\s+$/,"").split('"').join('');
 				if (plaintextcite && plaintextcite[0] === "-") {
 					item["suppress-author"] = true;
 					plaintextcite = plaintextcite.slice(1);
@@ -658,11 +658,14 @@ var Zotero_RTFScan = new function() {
 				}
 				items = [item].concat(items);
 				if (lst[i]) {
-					var placeholder = placeholder.join("; ");
-					var escapedPlaceholder = placeholder.replace('"', '\\&quot;', 'g');
+					var placeholder = placeholder.join("; ")
+						.split('"').join('')
+						.split(/[\\]*&quot;/).join('');
+					// legacy, looks like
+					var escapedPlaceholder = placeholder;
 					var items = JSON.stringify(items);
-					items = items.replace("\\\\&quot;", "\\&quot;", "g");
-					items = items.replace('"', '&quot;', "g");
+					items = items.split("\\\\&quot;").join("\\&quot;");
+					items = items.split('"').join('&quot;');
 					var randstr = this.generateRandomString();
 					var citation = tmplCitation.replace("%{1}s", escapedPlaceholder)
 						.replace("%{2}s",items)
@@ -687,8 +690,8 @@ var Zotero_RTFScan = new function() {
 		ODFConv.prototype.fixMarkup = function (str) {
 			str = str.replace(rexFixMarkupBold, "&lt;b&gt;$1&lt;/b&gt;");
 			str = str.replace(rexFixMarkupItalic, "&lt;i&gt;$1&lt;/i&gt;");
-			str = str.replace('&quot;', "\\&quot;", "g");
-			str = str.replace('"', "\\&quot;", "g");
+			str = str.split('&quot;').join("\\&quot;");
+			str = str.split('"').join("\\&quot;");
 			return str;
 		}
 
@@ -896,7 +899,10 @@ var Zotero_RTFScan = new function() {
 		// read through RTF file and display items as they're found
 		// we could read the file in chunks, but unless people start having memory issues, it's
 		// probably faster and definitely simpler if we don't
-		contents = Zotero.File.getContents(inputFile).replace(/([^\\\r])\r?\n/, "$1 ").replace("\\'92", "'", "g").replace("\\rquote ", "’");
+		contents = Zotero.File.getContents(inputFile)
+			.replace(/([^\\\r])\r?\n/, "$1 ")
+			.split("\\'92").join("'")
+			.split("\\rquote ").join("’");
 		var m;
 		var lastCitation = false;
 		while((m = citationRe.exec(contents))) {
@@ -920,7 +926,9 @@ var Zotero_RTFScan = new function() {
 				var start = citationRe.lastIndex-m[11].length;
 				var end = citationRe.lastIndex;
 			}
-			citationString = citationString.replace("\\{", "{", "g").replace("\\}", "}", "g");
+			citationString = citationString
+				.split("\\{").join("{")
+				.split("\\}").replace("}")
 			var suppressAuthor = !m[2];
 			
 			if(lastCitation && lastCitation.end >= start) {
@@ -1071,8 +1079,8 @@ var Zotero_RTFScan = new function() {
 				if(m) {
 					var initials = firstName.replace(/[^A-Z]/g, "");
 					var itemInitials = itemCreator.ref.firstName.split(/ +/g).map(function(name){
-                        return name[0].toUpperCase();
-                    }).join("");
+						return name[0].toUpperCase();
+					}).join("");
 					if(initials != itemInitials) return false;
 				} else {
 					// not all initials; verify that the first name matches
@@ -1194,8 +1202,8 @@ var Zotero_RTFScan = new function() {
 	 */
 	function _refreshCanAdvance() {
 		var canAdvance = true;
-        for (var i=0,ilen=citationItemIDs.length;i<ilen;i++) {
-            var itemList = citationItemIDs[i];
+		for (var i=0,ilen=citationItemIDs.length;i<ilen;i++) {
+			var itemList = citationItemIDs[i];
 			if(itemList.length != 1) {
 				canAdvance = false;
 				break;
@@ -1316,8 +1324,8 @@ var Zotero_RTFScan = new function() {
 		//Zotero.debug(cslCitations);
 		
 		itemIDs = itemIDs.map(function(obj){
-            return obj;
-        });
+			return obj;
+		});
 		//Zotero.debug(itemIDs);
 		
 		// prepare the list of rendered citations
@@ -1363,7 +1371,7 @@ var Zotero_RTFScan = new function() {
 			// fix line breaks
 			var linebreak = "\r\n";
 			if(contents.indexOf("\r\n") == -1) {
-				bibliography = bibliography.replace("\r\n", "\n", "g");
+				bibliography = bibliography.split("\r\n").join("\n");
 				linebreak = "\n";
 			}
 			
