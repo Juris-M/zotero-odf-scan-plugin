@@ -661,8 +661,7 @@ var Zotero_RTFScan = new function() {
 					var placeholder = placeholder.join("; ")
 						.split('"').join('')
 						.split(/[\\]*&quot;/).join('');
-					// legacy, looks like
-					var escapedPlaceholder = placeholder;
+					var escapedPlaceholder = placeholder.split('&').join('&amp;');
 					var items = JSON.stringify(items);
 					items = items.split("\\\\&quot;").join("\\&quot;");
 					items = items.split('"').join('&quot;');
