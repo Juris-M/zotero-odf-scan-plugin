@@ -6,13 +6,13 @@
       <RDF:Seq>
         <RDF:li>
           <RDF:Description>
-            <em:version>1.0.30</em:version>
+            <em:version>1.0.31</em:version>
             <em:targetApplication>
               <RDF:Description>
                 <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
                 <em:minVersion>38.0</em:minVersion>
                 <em:maxVersion>45.*</em:maxVersion>
-                <em:updateLink>https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v1.0.30/zotero-odf-scan-v1.0.30-fx.xpi</em:updateLink>
+                <em:updateLink>https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v1.0.31/zotero-odf-scan-v1.0.31-fx.xpi</em:updateLink>
               </RDF:Description>
             </em:targetApplication>
           </RDF:Description>
