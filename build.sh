@@ -29,8 +29,8 @@ function xx-make-the-bundle () {
         -name 'releases' -prune -o \
         -name 'jm-sh' -prune -o \
         -name 'build.sh' -prune -o \
-        -print \
-        | xargs zip "${XPI_FILE}" >> "${LOG_FILE}"
+        -print0 \
+        | xargs -0 zip "${XPI_FILE}" >> "${LOG_FILE}"
 }
 
 function build-the-plugin () {
