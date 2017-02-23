@@ -265,40 +265,12 @@ function changeButtonText(window) {
     unload(function() {}, window);
 }
 
-/**
- * Handle the add-on being activated on install/enable
- */
-function startup(data, reason) {
-    // Shift all open and new browser windows
-    setDefaultPrefs();
-    watchWindows(changeButtonText);
-}
-
-/**
- * Handle the add-on being deactivated on uninstall/disable
- */
-function shutdown(data, reason) {
-    // Clean up with unloaders when we're deactivating
-    if (reason != APP_SHUTDOWN)
-        unload();
-}
-
-/**
- * Handle the add-on being installed
- */
-function install(data, reason) {
-    Components.utils.import("resource://gre/modules/FileUtils.jsm");
-    Components.utils.import("resource://gre/modules/NetUtil.jsm");
-    var file = FileUtils.getFile('ProfD',['extensions','rtf-odf-scan-for-zotero@mystery-lab.com','resource','translators','Scannable Cite.js']);
-    NetUtil.asyncFetch(file, function(inputStream, status) {
-        if (!Components.isSuccessCode(status)) {
-            // Handle error!
-            return;
-        }
-        // The file data is contained within inputStream.
-        // You can read it into a string with
-        var data = NetUtil.readInputStreamToString(inputStream, inputStream.available());
-
+var translatorInstallObserver = {
+    observe: function(subject, topic, data) {
+        Zotero = Cc["@zotero.org/Zotero;1"]
+	        .getService(Ci.nsISupports)
+	        .wrappedJSObject;
+        var data = Zotero.File.getContentsFromURL('chrome://rtf-odf-scan-for-zotero/resource/translators/Scannable%20Cite.js');
         var splitTranslator = function (data) {
             var nest_level = 0;
             var split_ok = false;
@@ -318,18 +290,48 @@ function install(data, reason) {
             }
             return null;
         }
-        
         var data = splitTranslator(data);
-        var Zotero = Components.classes["@zotero.org/Zotero;1"]
-	        .getService(Components.interfaces.nsISupports)
-	        .wrappedJSObject;
         Zotero.Translators.save(data.header, data.code);
-	//re-initialize Zotero translators so Scannable Cite shows up right away
-	Zotero.Translators.init()
+	    //re-initialize Zotero translators so Scannable Cite shows up right away
+	    Zotero.Translators.init()
         dump("XXX Saved translator\n");
-
-    });
+    },
+    register: function() {
+        var observerService = Components.classes["@mozilla.org/observer-service;1"]
+            .getService(Components.interfaces.nsIObserverService);
+        observerService.addObserver(this, "final-ui-startup", false);
+    },
+    unregister: function() {
+        var observerService = Components.classes["@mozilla.org/observer-service;1"]
+            .getService(Components.interfaces.nsIObserverService);
+        observerService.removeObserver(this, "final-ui-startup");
+    }
 }
+
+/**
+ * Handle the add-on being activated on install/enable
+ */
+function startup(data, reason) {
+    // Shift all open and new browser windows
+    setDefaultPrefs();
+    watchWindows(changeButtonText);
+    translatorInstallObserver.register();
+}
+
+/**
+ * Handle the add-on being deactivated on uninstall/disable
+ */
+function shutdown(data, reason) {
+    // Clean up with unloaders when we're deactivating
+    if (reason != APP_SHUTDOWN)
+        unload();
+    translatorInstallObserver.unregister();
+}
+
+/**
+ * Handle the add-on being installed
+ */
+function install(data, reason) {}
 
 /**
  * Handle the add-on being uninstalled

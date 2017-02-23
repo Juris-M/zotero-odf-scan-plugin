@@ -18,7 +18,7 @@
         <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
         <!-- Firefox -->
         <em:minVersion>38.0</em:minVersion>
-        <em:maxVersion>47.*</em:maxVersion>
+        <em:maxVersion>50.*</em:maxVersion>
       </Description>
     </em:targetApplication>
     <em:targetApplication>
@@ -26,14 +26,14 @@
         <em:id>zotero@chnm.gmu.edu</em:id>
         <!-- Zotero -->
         <em:minVersion>4.0</em:minVersion>
-        <em:maxVersion>4.0.*</em:maxVersion>
+        <em:maxVersion>5.0.*</em:maxVersion>
       </Description>
     </em:targetApplication>
     <em:targetApplication>
       <Description>
         <em:id>juris-m@juris-m.github.io</em:id>
         <em:minVersion>4.0</em:minVersion>
-        <em:maxVersion>4.0.*</em:maxVersion>
+        <em:maxVersion>5.0.*</em:maxVersion>
       </Description>
     </em:targetApplication>
   </Description>
