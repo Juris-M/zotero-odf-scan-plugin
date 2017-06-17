@@ -596,7 +596,7 @@ var Zotero_RTFScan = new function() {
 				}
 				m.push(subm);
 			}
-			var lst = this.content.split(rexTextPlain);
+		        var lst = this.content.split(rexTextPlain);
 			ret.push(lst.slice(-1)[0]);
 			var placeholder = [];
 			for (var i=m.length-1;i>-1;i+=-1) {
@@ -657,7 +657,20 @@ var Zotero_RTFScan = new function() {
 					item.key = myidlst[0];
 				}
 				items = [item].concat(items);
-				if (lst[i]) {
+			    if (lst[i]) {
+				// Check for existence of each item. If any are missing,
+				// reinsert the missing ones into the document as text, and
+				// set each remaining item as a completely separate citation.
+				for (var j=0,jlen=items.length;j<jlen;j++) {
+
+				    // Oopsie. This will run async, so everything up the the top-level
+				    // convert function invoked from the UI needs to be asyncified.
+				    
+				    var gotItem = yield Zotero.Items.getAsync(item.key);
+				    
+				}
+				
+
 					var placeholder = placeholder.join("; ")
 						.split('"').join('')
 						.split(/[\\]*&quot;/).join('');
