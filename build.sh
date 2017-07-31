@@ -10,7 +10,7 @@ IS_BETA="false"
 FORK="zotero-odf-scan-plugin"
 BRANCH="master"
 CLIENT="zotero-odf-scan"
-VERSION_ROOT="1.0."
+VERSION_ROOT="2.0."
 SIGNED_STUB="rtfodf_scan_for_zotero-"
 
 function fix-content () {
