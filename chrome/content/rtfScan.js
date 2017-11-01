@@ -273,7 +273,7 @@ var Zotero_RTFScan = new function() {
 
 		var rexPref = /<meta:user-defined meta:name="ZOTERO_PREF[^<]*?<\/meta:user-defined>/;
 		var rexLabels = /^((?:art|ch|Ch|subch|col|fig|l|n|no|op|p|pp|para|subpara|pt|r|sec|subsec|Sec|sv|sch|tit|vrs|vol)\\.)\\s+(.*)/;
-		var rexBalancedTags = /(.*)<([^\/>][-:a-zA-Z0-9]*)[^>]*>([^>]*)<\/([-:a-zA-Z0-9]*)[^>]*>(.*)/;
+		var rexBalancedTags = /(.*)<([-:a-zA-Z0-9]*)[^\/>]*>([^<]*)<\/([-:a-zA-Z0-9]*)[^>]*>(.*)/;
 		var rexLink = /(<[^>]*xlink:href=\"([^\"]*)\"[^>]*>)\s*{([^\|{}]*)\|([^\|}]*)\|([^\|}]*)\|([^\|}]*)}\s*(<[^>]*>)/;
 		var rexLink2 = /(<[^>]*xlink:href=\"([^\"]*)\"[^>]*>)\s*(?:<[^\/>]+>)\s*{([^\|{}]*)\|([^\|}]*)\|([^\|}]*)\|([^\|}]*)}\s*(?:<\/[^\/>]+>)\s*(<[^>]*>)/;
 		var rexNativeLink = /<text:reference-mark-start[^>]*ZOTERO_ITEM\s+(?:CSL_CITATION\s+)*([^>]*)\s+[^ ]*\/>(.*?)<text:reference-mark-end[^>]*\/>/;
@@ -402,10 +402,17 @@ var Zotero_RTFScan = new function() {
 						// if has uri, get value, identify as user or group, and fashion zotero://select ref
 						var uri = item.uri
 						var key = [];
+                        var m_uri = false;
 						if ("object" === typeof item.uri) {
-							uri = uri[0];
+                            for (var u of uri) {
+                                if (u) {
+						            m_uri = u.match(/\/(users|groups)\/([0-9]+|local)\/items\/(.+)/);
+                                    if (m_uri) {
+                                        break;
+                                    }
+                                }
+                            }
 						}
-						var m_uri = uri.match(/\/(users|groups)\/([0-9]*|local)\/items\/(.+)/);
 						if (m_uri) {
 							if (m_uri[1] === "users") {
 								isUser = true;
