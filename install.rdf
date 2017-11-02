@@ -4,7 +4,7 @@
     <em:id>rtf-odf-scan-for-zotero@mystery-lab.com</em:id>
     <em:type>2</em:type>
     <em:name>RTF/ODF Scan for Zotero</em:name>
-    <em:version>2.0.35beta2</em:version>
+    <em:version>2.0.35beta3</em:version>
     <em:creator>Frank Bennett</em:creator>
     <em:contributor/>
     <em:description>Adds convertible citation marker support to Zotero.</em:description>
