@@ -165,8 +165,16 @@ var Zotero_RTFScan = new function() {
 			if(dotIndex != -1) {
 				leafName = leafName.substr(0, dotIndex);
 			}
-			var suffix = _getString("ODFScan."+fileType+".scannedFileSuffix" + outputMode);
-			fp.defaultString = leafName+" "+ suffix +"."+fileExt;
+			var suffix = (" " + _getString("ODFScan."+fileType+".scannedFileSuffix" + outputMode));
+			if (fileType === "odf") {
+				var suffixMatchers = [ " " + _getString("ODFScan.odf.scannedFileSuffixtomarkers"), " " + _getString("ODFScan.odf.scannedFileSuffixtocitations") ];
+				for (var suffixMatcher of suffixMatchers) {
+					if (leafName.slice(-suffixMatcher.length, leafName.length) == suffixMatcher) {
+						leafName = leafName.slice(0, -suffixMatcher.length);
+					}
+				}
+			}
+			fp.defaultString = leafName + suffix + "." + fileExt;
 		} else {
 			fp.defaultString = "Untitled." + fileExt;
 		}
@@ -402,16 +410,16 @@ var Zotero_RTFScan = new function() {
 						// if has uri, get value, identify as user or group, and fashion zotero://select ref
 						var uri = item.uri
 						var key = [];
-                        var m_uri = false;
+						var m_uri = false;
 						if ("object" === typeof item.uri) {
-                            for (var u of uri) {
-                                if (u) {
-						            m_uri = u.match(/\/(users|groups)\/([0-9]+|local)\/items\/(.+)/);
-                                    if (m_uri) {
-                                        break;
-                                    }
-                                }
-                            }
+							for (var u of uri) {
+								if (u) {
+									m_uri = u.match(/\/(users|groups)\/([0-9]+|local)\/items\/(.+)/);
+									if (m_uri) {
+										break;
+									}
+								}
+							}
 						}
 						if (m_uri) {
 							if (m_uri[1] === "users") {
@@ -507,7 +515,7 @@ var Zotero_RTFScan = new function() {
 
 			// Wipe out any font definitions in the style, they can mess things up pretty badly
 			this.content = this.content.replace(/\s+fo:font-family="[^"]*"/g, "");
-            
+			
 			// Matches wrapped text links
 			var lst = this.content.split(rexWrappedLinks);
 			for (var i=0,ilen=lst.length;i<ilen;i+=1) {
@@ -556,8 +564,8 @@ var Zotero_RTFScan = new function() {
 
 		ODFConv.prototype.rejoin = function (lst) {
 			this.content = lst.map(function(obj){
-                return obj.txt;
-            }).join("");
+				return obj.txt;
+			}).join("");
 		}
 
 		ODFConv.prototype.tidy = function () {
