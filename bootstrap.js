@@ -265,36 +265,42 @@ function changeButtonText(window) {
     unload(function() {}, window);
 }
 
-var translatorInstallObserver = {
-    observe: function(subject, topic, data) {
-        Zotero = Cc["@zotero.org/Zotero;1"]
-	        .getService(Ci.nsISupports)
-	        .wrappedJSObject;
-        var data = Zotero.File.getContentsFromURL('chrome://rtf-odf-scan-for-zotero/resource/translators/Scannable%20Cite.js');
-        var splitTranslator = function (data) {
-            var nest_level = 0;
-            var split_ok = false;
-            for (var i=0,ilen=data.length;i<ilen;i+=1) {
-                if (data[i] === '{') {
-                    nest_level += 1;
-                    split_ok = true;
-                } else if (data[i] === '}') {
-                    nest_level += -1;
-                }
-                if (nest_level === 0 && split_ok) {
-                    return {
-                        header:JSON.parse(data.slice(0,i+1)),
-                        code:data.slice(i+1).replace(/^\s+/,'').replace(/\s+$/,'')
-                    }
+function translatorInstall() {
+    Zotero = Cc["@zotero.org/Zotero;1"]
+	    .getService(Ci.nsISupports)
+	    .wrappedJSObject;
+    var data = Zotero.File.getContentsFromURL('resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js');
+    var splitTranslator = function (data) {
+        var nest_level = 0;
+        var split_ok = false;
+        for (var i=0,ilen=data.length;i<ilen;i+=1) {
+            if (data[i] === '{') {
+                nest_level += 1;
+                split_ok = true;
+            } else if (data[i] === '}') {
+                nest_level += -1;
+            }
+            if (nest_level === 0 && split_ok) {
+                return {
+                    header:JSON.parse(data.slice(0,i+1)),
+                    code:data.slice(i+1).replace(/^\s+/,'').replace(/\s+$/,'')
                 }
             }
-            return null;
         }
-        var data = splitTranslator(data);
-        Zotero.Translators.save(data.header, data.code);
-	    //re-initialize Zotero translators so Scannable Cite shows up right away
-	    Zotero.Translators.init()
-        dump("XXX Saved translator\n");
+        return null;
+    }
+    var data = splitTranslator(data);
+    // Reinitialize translators so that Scannable Cite turns up the listing right away.
+	Zotero.Translators.init().then(function(){
+        Zotero.Translators.save(data.header, data.code).then(function() {
+	        Zotero.Translators.reinit();
+        })
+    });
+}
+    
+var translatorInstallObserver = {
+    observe: function(subject, topic, data) {
+        translatorInstall();
     },
     register: function() {
         var observerService = Components.classes["@mozilla.org/observer-service;1"]
