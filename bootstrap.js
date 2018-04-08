@@ -263,6 +263,7 @@ function changeButtonText(window) {
     cmdElem.setAttribute("oncommand","window.openDialog('chrome://rtf-odf-scan-for-zotero/content/rtfScan.xul', 'rtfScan', 'chrome,centerscreen')");
     // Restore of original behaviour is handled elsewhere
     unload(function() {}, window);
+    translatorInstallObserver.register(); // starting here we are sure Zotero is live.
 }
 
 function translatorInstall() {
@@ -321,7 +322,6 @@ function startup(data, reason) {
     // Shift all open and new browser windows
     setDefaultPrefs();
     watchWindows(changeButtonText);
-    translatorInstallObserver.register();
 }
 
 /**
