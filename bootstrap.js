@@ -257,7 +257,7 @@ function unload(callback, container) {
  */
 function changeButtonText(window) {
     // Change text in Zotero RTF Scan button
-    var menuElem = window.document.getElementById("zotero-tb-actions-rtfScan");
+    var menuElem = window.document.getElementById("menu_rtfScan");
     var cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
     menuElem.setAttribute("label", "RTF/ODF Scan");
     cmdElem.setAttribute("oncommand","window.openDialog('chrome://rtf-odf-scan-for-zotero/content/rtfScan.xul', 'rtfScan', 'chrome,centerscreen')");
