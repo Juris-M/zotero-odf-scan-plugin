@@ -49,7 +49,7 @@ function watchWindows(callback) {
             let {documentElement} = window.document;
             if (documentElement.getAttribute("windowtype") == "navigator:browser"
                 || documentElement.getAttribute("windowtype") === "zotero:basicViewer") {
-                var menuElem = window.document.getElementById('zotero-tb-actions-rtfScan');
+                var menuElem = window.document.getElementById('menu_rtfScan');
                 if (!menuElem) return;
                 var cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
 	            var windowUtils = window.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
@@ -82,7 +82,7 @@ function watchWindows(callback) {
                         // Allow a little time for the window to start. If recognition
                         // fails on tab open, a later select will still pick it up
                         window.setTimeout(function(contentWindow,tabCallbackInfo,windowID,contentWindowID,callback) {
-                            var menuElem = contentWindow.document.getElementById('zotero-tb-actions-rtfScan');
+                            var menuElem = contentWindow.document.getElementById('menu_rtfScan');
                             if (!menuElem) return;
                             // Children are Zotero tab instances and only one can exist
                             for (var key in tabCallbackInfo[windowID].children) {
@@ -148,7 +148,7 @@ function watchWindows(callback) {
         Services.ww.unregisterNotification(windowWatcher);
 
         function restoreRtfScan (win,oldStuff) {
-            var menuElem = win.document.getElementById("zotero-tb-actions-rtfScan");
+            var menuElem = win.document.getElementById("menu_rtfScan");
             if (!menuElem) return;
             var cmdElem = win.document.getElementById("cmd_zotero_rtfScan");
             menuElem.setAttribute("label",oldStuff.oldLabel);
