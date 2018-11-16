@@ -292,7 +292,7 @@ function translatorInstall() {
     }
     var data = splitTranslator(data);
     // Reinitialize translators so that Scannable Cite turns up the listing right away.
-	Zotero.Translators.init().then(function(){
+	Zotero.Schema.schemaUpdatePromise.then(function(){
         Zotero.Translators.save(data.header, data.code).then(function() {
 	        Zotero.Translators.reinit();
         })
