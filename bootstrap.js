@@ -32,6 +32,8 @@ function setDefaultPrefs() {
   }
 }
 
+var installTranslators = false
+
 /**
  * Apply a callback to each open and new browser windows.
  *
@@ -52,9 +54,9 @@ function watchWindows(callback) {
                 var menuElem = window.document.getElementById('menu_rtfScan');
                 if (!menuElem) return;
                 var cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
-	            var windowUtils = window.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-		            .getInterface(Components.interfaces.nsIDOMWindowUtils);
-	            var windowID = windowUtils.outerWindowID;
+                var windowUtils = window.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
+                var windowID = windowUtils.outerWindowID;
                 tabCallbackInfo[windowID] = {
                     oldLabel:menuElem.getAttribute("label"),
                     oldRtfScanCommand:cmdElem.getAttribute("oncommand"),
@@ -72,9 +74,9 @@ function watchWindows(callback) {
                         // Capture a pointer to this tab window for use in the setTimeout,
                         // and make a note of the tab windowID (needed for uninstall)
                         var contentWindow = window.content;
-	                    var windowUtils = contentWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-		                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
-	                    var contentWindowID = windowUtils.outerWindowID;
+                        var windowUtils = contentWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                            .getInterface(Components.interfaces.nsIDOMWindowUtils);
+                        var contentWindowID = windowUtils.outerWindowID;
 
                         // Only once for per tab in this browser window
                         if (tabCallbackInfo[windowID].children[contentWindowID]) return;
@@ -157,8 +159,8 @@ function watchWindows(callback) {
 
         try {
             let someWindow = Services.wm.getMostRecentWindow(null);
-	        var windowUtils = someWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-				.getInterface(Components.interfaces.nsIDOMWindowUtils);
+            var windowUtils = someWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                .getInterface(Components.interfaces.nsIDOMWindowUtils);
             for (var windowID in tabCallbackInfo) {
 
                 // Get our main window
@@ -267,38 +269,25 @@ function changeButtonText(window) {
 }
 
 function translatorInstall() {
+    if (!installTranslators) return;
+
     Zotero = Cc["@zotero.org/Zotero;1"]
-	    .getService(Ci.nsISupports)
-	    .wrappedJSObject;
+        .getService(Ci.nsISupports)
+        .wrappedJSObject;
     var data = Zotero.File.getContentsFromURL('resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js');
-    var splitTranslator = function (data) {
-        var nest_level = 0;
-        var split_ok = false;
-        for (var i=0,ilen=data.length;i<ilen;i+=1) {
-            if (data[i] === '{') {
-                nest_level += 1;
-                split_ok = true;
-            } else if (data[i] === '}') {
-                nest_level += -1;
-            }
-            if (nest_level === 0 && split_ok) {
-                return {
-                    header:JSON.parse(data.slice(0,i+1)),
-                    code:data.slice(i+1).replace(/^\s+/,'').replace(/\s+$/,'')
-                }
-            }
-        }
-        return null;
-    }
-    var data = splitTranslator(data);
-    // Reinitialize translators so that Scannable Cite turns up the listing right away.
-	Zotero.Translators.init().then(function(){
+    data = translator.match(/^([\s\S]+?}\n\n)([\s\S]+)/);
+    data = {
+      header: JSON.parse(data[1]),
+      code: data[2],
+    };
+
+    Zotero.Schema.schemaUpdatePromise.then(function() {
         Zotero.Translators.save(data.header, data.code).then(function() {
-	        Zotero.Translators.reinit();
-        })
+            Zotero.Translators.reinit();
+        });
     });
 }
-    
+
 var translatorInstallObserver = {
     observe: function(subject, topic, data) {
         translatorInstall();
@@ -337,7 +326,9 @@ function shutdown(data, reason) {
 /**
  * Handle the add-on being installed
  */
-function install(data, reason) {}
+function install(data, reason) {
+  installTranslators = true
+}
 
 /**
  * Handle the add-on being uninstalled
