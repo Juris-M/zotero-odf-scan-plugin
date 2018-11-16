@@ -15,24 +15,29 @@ const PREFS = {
     "translators.ODFScan.includeTitle":false
 };
 
-function setDefaultPrefs() {
-  let branch = Services.prefs.getDefaultBranch(PREF_BRANCH);
-  for (let [key, val] in Iterator(PREFS)) {
-    switch (typeof val) {
-      case "boolean":
-        branch.setBoolPref(key, val);
-        break;
-      case "number":
-        branch.setIntPref(key, val);
-        break;
-      case "string":
-        branch.setCharPref(key, val);
-        break;
-    }
-  }
+var consoleService = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
+function logMessage(msg) {
+    consoleService.logStringMessage("ODF Scan: " + msg);
 }
 
-var installTranslators = false
+function setDefaultPrefs() {
+    let branch = Services.prefs.getDefaultBranch(PREF_BRANCH);
+    for (let [key, val] in Iterator(PREFS)) {
+        switch (typeof val) {
+        case "boolean":
+            branch.setBoolPref(key, val);
+            break;
+        case "number":
+            branch.setIntPref(key, val);
+            break;
+        case "string":
+            branch.setCharPref(key, val);
+            break;
+        }
+    }
+}
+
+var reinstallTranslator = false;
 
 /**
  * Apply a callback to each open and new browser windows.
@@ -50,8 +55,8 @@ function watchWindows(callback) {
             // Now that the window has loaded, only handle browser windows
             let {documentElement} = window.document;
             if (documentElement.getAttribute("windowtype") == "navigator:browser"
-                || documentElement.getAttribute("windowtype") === "zotero:basicViewer") {
-                var menuElem = window.document.getElementById('menu_rtfScan');
+        || documentElement.getAttribute("windowtype") === "zotero:basicViewer") {
+                var menuElem = window.document.getElementById("menu_rtfScan");
                 if (!menuElem) return;
                 var cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
                 var windowUtils = window.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
@@ -61,7 +66,7 @@ function watchWindows(callback) {
                     oldLabel:menuElem.getAttribute("label"),
                     oldRtfScanCommand:cmdElem.getAttribute("oncommand"),
                     children: {}
-                }
+                };
                 if (window.gBrowser && window.gBrowser.tabContainer) {
 
                     var tabContainer = window.gBrowser.tabContainer;
@@ -84,7 +89,7 @@ function watchWindows(callback) {
                         // Allow a little time for the window to start. If recognition
                         // fails on tab open, a later select will still pick it up
                         window.setTimeout(function(contentWindow,tabCallbackInfo,windowID,contentWindowID,callback) {
-                            var menuElem = contentWindow.document.getElementById('menu_rtfScan');
+                            var menuElem = contentWindow.document.getElementById("menu_rtfScan");
                             if (!menuElem) return;
                             // Children are Zotero tab instances and only one can exist
                             for (var key in tabCallbackInfo[windowID].children) {
@@ -102,7 +107,7 @@ function watchWindows(callback) {
                     // Function to remove listener on uninstall
                     tabCallbackInfo[windowID].removeListener = function () {
                         tabContainer.removeEventListener("TabSelect", tabSelect);
-                    }
+                    };
                 }
 
                 // Modify the chrome window itself
@@ -116,8 +121,8 @@ function watchWindows(callback) {
 
     // Wait for the window to finish loading before running the callback
     function runOnLoad(window) {
-        // Listen for one load event before checking the window type
-        // ODF Scan: run until we find both the main window and a tab ...
+    // Listen for one load event before checking the window type
+    // ODF Scan: run until we find both the main window and a tab ...
         window.addEventListener("load", function runOnce() {
             window.removeEventListener("load", runOnce, false);
             watcher(window);
@@ -127,7 +132,7 @@ function watchWindows(callback) {
     // Add functionality to existing windows
     let windows = Services.wm.getEnumerator(null);
     while (windows.hasMoreElements()) {
-        // Only run the watcher immediately if the window is completely loaded
+    // Only run the watcher immediately if the window is completely loaded
         let window = windows.getNext();
         if (window.document.readyState == "complete") {
             watcher(window);
@@ -216,14 +221,14 @@ function unload(callback, container) {
 
     // Calling with no arguments runs all the unloader callbacks
     if (callback == null) {
-        unloaders.slice().forEach(function(unloader) unloader());
+        unloaders.slice().forEach(function(unloader) { unloader(); });
         unloaders.length = 0;
         return;
     }
 
     // The callback is bound to the lifetime of the container if we have one
     if (container != null) {
-        // Remove the unloader when the container unloads
+    // Remove the unloader when the container unloads
         container.addEventListener("unload", removeUnloader, false);
 
         // Wrap the callback to additionally remove the unload listener
@@ -233,7 +238,7 @@ function unload(callback, container) {
             var tabContainer = container.gBrowser.tabContainer;
             tabContainer.removeEventListener("TabSelect", container.tabSelect);
             origCallback();
-        }
+        };
     }
 
     // Wrap the callback in a function that ignores failures
@@ -257,7 +262,8 @@ function unload(callback, container) {
 /**
  * Change the menu and slot in a new command
  */
-function changeButtonText(window) {
+function startODFScan(window) {
+    logMessage("changeButtonText");
     // Change text in Zotero RTF Scan button
     var menuElem = window.document.getElementById("menu_rtfScan");
     var cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
@@ -265,52 +271,54 @@ function changeButtonText(window) {
     cmdElem.setAttribute("oncommand","window.openDialog('chrome://rtf-odf-scan-for-zotero/content/rtfScan.xul', 'rtfScan', 'chrome,centerscreen')");
     // Restore of original behaviour is handled elsewhere
     unload(function() {}, window);
-    translatorInstallObserver.register(); // starting here we are sure Zotero is live.
+    try {
+        installTranslator();
+    } catch (e) {
+        logMessage("translator install failed: " + e);
+    }
 }
 
-function translatorInstall() {
-    if (!installTranslators) return;
+function installTranslator() {
+    if (!reinstallTranslator) return;
 
-    Zotero = Cc["@zotero.org/Zotero;1"]
+    var Zotero = Cc["@zotero.org/Zotero;1"]
         .getService(Ci.nsISupports)
         .wrappedJSObject;
-    var data = Zotero.File.getContentsFromURL('resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js');
-    data = translator.match(/^([\s\S]+?}\n\n)([\s\S]+)/);
+
+    logMessage("installing ODF scan translator");
+    var data = Zotero.File.getContentsFromURL("resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js");
+    data = data.match(/^([\s\S]+?}\n\n)([\s\S]+)/);
     data = {
-      header: JSON.parse(data[1]),
-      code: data[2],
+        header: JSON.parse(data[1]),
+        code: data[2],
     };
 
+    logMessage("popping up window");
+    var pw = new Zotero.ProgressWindow();
+    pw.changeHeadline("ODF Scan: waiting for Zotero...");
+    pw.addDescription("Waiting for Zotero translator framework to initialize...");
+    pw.show();
+
     Zotero.Schema.schemaUpdatePromise.then(function() {
+        logMessage("Zotero ready");
+        pw.startCloseTimer(500);
         Zotero.Translators.save(data.header, data.code).then(function() {
             Zotero.Translators.reinit();
+            logMessage("translator installed");
         });
+    }).catch(function(err) {
+        logMessage("translator install failed: " + err);
     });
-}
-
-var translatorInstallObserver = {
-    observe: function(subject, topic, data) {
-        translatorInstall();
-    },
-    register: function() {
-        var observerService = Components.classes["@mozilla.org/observer-service;1"]
-            .getService(Components.interfaces.nsIObserverService);
-        observerService.addObserver(this, "final-ui-startup", false);
-    },
-    unregister: function() {
-        var observerService = Components.classes["@mozilla.org/observer-service;1"]
-            .getService(Components.interfaces.nsIObserverService);
-        observerService.removeObserver(this, "final-ui-startup");
-    }
 }
 
 /**
  * Handle the add-on being activated on install/enable
  */
 function startup(data, reason) {
+    logMessage("startup");
     // Shift all open and new browser windows
     setDefaultPrefs();
-    watchWindows(changeButtonText);
+    watchWindows(startODFScan);
 }
 
 /**
@@ -318,16 +326,15 @@ function startup(data, reason) {
  */
 function shutdown(data, reason) {
     // Clean up with unloaders when we're deactivating
-    if (reason != APP_SHUTDOWN)
-        unload();
-    translatorInstallObserver.unregister();
+    if (reason != APP_SHUTDOWN) unload();
 }
 
 /**
  * Handle the add-on being installed
  */
 function install(data, reason) {
-  installTranslators = true
+    logMessage("install");
+    reinstallTranslator = true;
 }
 
 /**
