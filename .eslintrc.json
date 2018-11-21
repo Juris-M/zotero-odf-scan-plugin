@@ -14,13 +14,24 @@
         "semi": [ "error", "always" ],
         "no-unused-vars": ["off"],
         "no-empty": ["off"],
-        "no-inner-declarations": ["off"]
+        "no-inner-declarations": ["off"],
+        "keyword-spacing": ["error"],
+        "no-var": ["error"],
+        "no-cond-assign": ["off"],
+        "no-useless-escape": ["off"],
+        "no-constant-condition": ["off"],
+        "for-direction": ["off"]
     },
+    "plugins": [
+      "local"
+    ],
     "globals": {
+      "Zotero_File_Interface_Bibliography": false,
       "Components": false,
       "Services": false,
       "Iterator": false,
       "dump": false,
-      "APP_SHUTDOWN": false
+      "APP_SHUTDOWN": false,
+      "Zotero": true
     }
 }
