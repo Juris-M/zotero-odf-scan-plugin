@@ -65,7 +65,7 @@ class Builder:
     for xpi in glob.glob('*.xpi'):
       os.remove(xpi)
     with zipfile.ZipFile(self.xpi, 'w', zipfile.ZIP_DEFLATED) as xpi:
-      for file in ['chrome.manifest', 'bootstrap.js', 'install.rdf'] + glob.glob('resource/**/*') + glob.glob('chrome/**/*'):
+      for file in ['chrome.manifest', 'bootstrap.js', 'install.rdf'] + glob.glob('resource/**/*', recursive=True) + glob.glob('chrome/**/*', recursive=True):
         xpi.write(file)
 
 Builder()
