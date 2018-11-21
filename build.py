@@ -22,12 +22,12 @@ class Builder:
       self.package = json.load(f)
     self.version = self.package['version']
 
-    self.xpi = f'zotero-odf-scan-v{self.version}{"-beta" if self.beta else ""}.xpi'
+    if self.beta: self.version += '-beta'
 
-    self.install_rdf()
-    self.about_dtd()
-    if self.release: self.update_rdf()
+    self.xpi = f'zotero-odf-scan-v{self.version}.xpi'
+
     self.build()
+    if self.release: self.update_rdf()
 
   def namespaces(self, doc):
     namespaces = {}
@@ -35,23 +35,6 @@ class Builder:
       if ns[0]: # Removes the None namespace, neither needed nor supported.
         namespaces[ns[0]] = ns[1]
     return namespaces
-
-  def install_rdf(self):
-    rdf = etree.parse('install.rdf')
-    rdf.find('.//em:version', namespaces=self.namespaces(rdf)).text = self.version
-    with open('install.rdf', 'wb') as f:
-      f.write(etree.tostring(rdf, pretty_print=True))
-
-  def about_dtd(self):
-    with open('chrome/locale/en-US/about.dtd') as f:
-      dtd = etree.DTD(f)
-
-    with open('chrome/locale/en-US/about.dtd', 'w') as f:
-      print(f'<!ENTITY odfscan.version "{self.version}">', file=f)
-
-      for entity in list(dtd.entities()):
-        if entity.name == 'odfscan.version': continue
-        print(f'<!ENTITY {entity.name} "{entity.content}">', file=f)
 
   def update_rdf(self):
     rdf = etree.parse('docs/update.rdf')
@@ -64,8 +47,27 @@ class Builder:
   def build(self):
     for xpi in glob.glob('*.xpi'):
       os.remove(xpi)
+
     with zipfile.ZipFile(self.xpi, 'w', zipfile.ZIP_DEFLATED) as xpi:
       for file in ['chrome.manifest', 'bootstrap.js', 'install.rdf'] + glob.glob('resource/**/*', recursive=True) + glob.glob('chrome/**/*', recursive=True):
-        xpi.write(file)
+
+        if file == 'install.rdf':
+          rdf = etree.parse('install.rdf')
+          rdf.find('.//em:version', namespaces=self.namespaces(rdf)).text = self.version
+          xpi.writestr(file, etree.tostring(rdf, pretty_print=True))
+
+        elif file == 'chrome/locale/en-US/about.dtd':
+          with open('chrome/locale/en-US/about.dtd') as f:
+            dtd = etree.DTD(f)
+
+            entities = f'<!ENTITY odfscan.version "{self.version}">\n'
+
+            for entity in list(dtd.entities()):
+              if entity.name == 'odfscan.version': continue
+              entities += f'<!ENTITY {entity.name} "{entity.content}">\n'
+          xpi.writestr(file, entities)
+
+        else:
+          xpi.write(file)
 
 Builder()
