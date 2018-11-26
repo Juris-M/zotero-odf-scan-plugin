@@ -1,6 +1,6 @@
 {
   "name": "zotero-odf-scan-plugin",
-  "version": "2.0.39",
+  "version": "2.0.41",
   "description": "Zotero ODF Scan",
   "directories": {
     "doc": "docs"
@@ -13,16 +13,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/retorquere/zotero-odf-scan-plugin.git",
-    "organisation": "retorquere",
+    "url": "git@github.com:Juris-M/zotero-odf-scan-plugin.git",
+    "organisation": "Juris-M",
     "repo": "zotero-odf-scan-plugin"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/retorquere/zotero-odf-scan-plugin/issues"
+    "url": "https://github.com/Juris-M/zotero-odf-scan-plugin/issues"
   },
-  "homepage": "https://github.com/retorquere/zotero-odf-scan-plugin#readme",
+  "homepage": "https://github.com/Juris-M/zotero-odf-scan-plugin#readme",
   "devDependencies": {
     "eslint": "^5.9.0"
   },
