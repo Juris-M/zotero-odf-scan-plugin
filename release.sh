@@ -10,6 +10,6 @@ if [[ "$(git rev-parse --abbrev-ref HEAD)" != "master" ]]; then
   exit
 fi
 
-github-release release --user $npm_package_repository_organisation --repo $npm_package_repository_repo --tag v$npm_package_version --name "$npm_package_description"
+github-release release --user $npm_package_repository_organisation --repo $npm_package_repository_repo --tag v$npm_package_version --name "v$npm_package_version final"
 github-release upload --user $npm_package_repository_organisation --repo $npm_package_repository_repo --tag v$npm_package_version --name zotero-odf-scan-v$npm_package_version.xpi --file zotero-odf-scan-v$npm_package_version.xpi
 
