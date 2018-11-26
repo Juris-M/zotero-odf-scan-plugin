@@ -1,6 +1,6 @@
 {
   "name": "zotero-odf-scan-plugin",
-  "version": "2.0.4",
+  "version": "2.0.41",
   "description": "Zotero ODF Scan",
   "directories": {
     "doc": "docs"
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Juris-M/zotero-odf-scan-plugin.git",
+    "url": "git@github.com:Juris-M/zotero-odf-scan-plugin.git",
     "organisation": "Juris-M",
     "repo": "zotero-odf-scan-plugin"
   },
