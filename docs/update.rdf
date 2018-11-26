@@ -1,0 +1,22 @@
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+  
+  <Description about="urn:mozilla:extension:rtf-odf-scan-for-zotero@mystery-lab.com">
+    <em:updates>
+      <Seq>
+        <li>
+          <Description>
+            <em:version>2.0.39-1</em:version>
+            <em:targetApplication>
+              <Description>
+                <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
+                <em:minVersion>38.0</em:minVersion>
+                <em:maxVersion>54.*</em:maxVersion>
+                <em:updateLink>https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v2.0.39-1/zotero-odf-scan-v2.0.39-1.xpi</em:updateLink>
+              </Description>
+            </em:targetApplication>
+          </Description>
+        </li>
+      </Seq>
+    </em:updates>
+  </Description>
+</RDF>

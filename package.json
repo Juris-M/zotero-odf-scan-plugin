@@ -1,0 +1,29 @@
+{
+  "name": "zotero-odf-scan-plugin",
+  "version": "2.0.39",
+  "description": "Zotero ODF Scan",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "./build.py",
+    "postversion": "./build.py --release",
+    "release": "./release.sh",
+    "test": "eslint bootstrap.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/retorquere/zotero-odf-scan-plugin.git",
+    "organisation": "retorquere",
+    "repo": "zotero-odf-scan-plugin"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/retorquere/zotero-odf-scan-plugin/issues"
+  },
+  "homepage": "https://github.com/retorquere/zotero-odf-scan-plugin#readme",
+  "devDependencies": {
+    "eslint": "^5.9.0"
+  }
+}
