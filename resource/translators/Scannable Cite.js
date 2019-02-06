@@ -19,7 +19,7 @@
 const LEGAL_TYPES = ["bill","case","gazette","hearing","patent","regulation","statute","treaty"];
 const Mem = function (item) {
     let lst = [];
-    const isLegal = (LEGAL_TYPES.indexOf(item.itemType)>-1);
+    const isLegal = LEGAL_TYPES.includes(item.itemType);
     this.set = function (str, punc, slug) { if (!punc) {punc="";} if (str) {lst.push((str + punc));} else if (!isLegal) {lst.push(slug);}};
     this.setlaw = function (str, punc) { if (!punc) {punc="";} if (str && isLegal) {lst.push(str + punc);}};
     this.get = function () { return lst.join(" "); };
