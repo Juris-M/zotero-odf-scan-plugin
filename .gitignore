@@ -1,3 +1,4 @@
 *.xpi
 node_modules
 version
+releases
