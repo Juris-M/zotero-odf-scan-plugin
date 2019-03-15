@@ -9,7 +9,7 @@
     "build": "./build.py",
     "postversion": "./build.py --release",
     "release": "./release.sh",
-    "test": "eslint bootstrap.js"
+    "test": "eslint --fix bootstrap.js chrome/content/*.js 'resource/translators/Scannable Cite.js'"
   },
   "repository": {
     "type": "git",
@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/Juris-M/zotero-odf-scan-plugin#readme",
   "devDependencies": {
-    "eslint": "^5.9.0"
+    "eslint": "^5.9.0",
+    "eslint-plugin-local": "^1.0.0"
   }
 }
