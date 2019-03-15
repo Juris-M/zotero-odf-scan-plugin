@@ -39,8 +39,10 @@ class Builder:
   def update_rdf(self):
     rdf = etree.parse('docs/update.rdf')
     namespaces = self.namespaces(rdf)
-    rdf.find('.//em:version', namespaces=namespaces).text = self.version
-    rdf.find('.//em:updateLink', namespaces=namespaces).text = f'https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v{self.version}/zotero-odf-scan-v{self.version}.xpi'
+    for version in rdf.findall('.//em:version', namespaces=namespaces):
+      version.text = self.version
+    for link in rdf.findall('.//em:updateLink', namespaces=namespaces):
+      link.text = f'https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v{self.version}/zotero-odf-scan-v{self.version}.xpi'
     with open('docs/update.rdf', 'wb') as f:
       f.write(etree.tostring(rdf, pretty_print=True))
 
