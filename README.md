@@ -11,3 +11,5 @@ also stores the version number in package.json, where build.py picks
 it up.
 
 `npm version` will automatically run build.py after bumping.
+
+The build requires python 3.7 and node 8+
