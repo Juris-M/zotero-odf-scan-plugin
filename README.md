@@ -4,7 +4,7 @@ The build requires python 3.7 and node 8+. Before running build, you must prepar
 
 ```
 $ pip3 install -r requirements.txt
-$ mpm install
+$ npm install
 ```
 
 After this, `build.py` rebuilds the XPI. Without parameters it just grabs the sources,
