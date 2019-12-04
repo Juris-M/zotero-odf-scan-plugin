@@ -15,7 +15,7 @@ const PREFS = {
     "translators.ODFScan.includeTitle":false
 };
 
-var consoleService = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
+const consoleService = Components.classes["@mozilla.org/consoleservice;1"].getService(Components.interfaces.nsIConsoleService);
 function logMessage(msg) {
     consoleService.logStringMessage("ODF Scan: " + msg);
 }
@@ -37,8 +37,6 @@ function setDefaultPrefs() {
     }
 }
 
-var reinstallTranslator = false;
-
 /**
  * Apply a callback to each open and new browser windows.
  *
@@ -48,7 +46,7 @@ var reinstallTranslator = false;
 function watchWindows(callback) {
     // Travelling object used to store original attribute values
     // needed for uninstall
-    var tabCallbackInfo = {};
+    let tabCallbackInfo = {};
     // Wrap the callback in a function that ignores failures
     function watcher(window) {
         try {
@@ -56,12 +54,12 @@ function watchWindows(callback) {
             let {documentElement} = window.document;
             if (documentElement.getAttribute("windowtype") == "navigator:browser"
         || documentElement.getAttribute("windowtype") === "zotero:basicViewer") {
-                var menuElem = window.document.getElementById("menu_rtfScan");
+                let menuElem = window.document.getElementById("menu_rtfScan");
                 if (!menuElem) return;
-                var cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
-                var windowUtils = window.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                let cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
+                let windowUtils = window.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                     .getInterface(Components.interfaces.nsIDOMWindowUtils);
-                var windowID = windowUtils.outerWindowID;
+                let windowID = windowUtils.outerWindowID;
                 tabCallbackInfo[windowID] = {
                     oldLabel:menuElem.getAttribute("label"),
                     oldRtfScanCommand:cmdElem.getAttribute("oncommand"),
@@ -69,7 +67,7 @@ function watchWindows(callback) {
                 };
                 if (window.gBrowser && window.gBrowser.tabContainer) {
 
-                    var tabContainer = window.gBrowser.tabContainer;
+                    let tabContainer = window.gBrowser.tabContainer;
 
                     // Tab monitor callback wrapper. Sets aside enough information
                     // to shut down listeners on plugin uninstall or disable. Tabs in
@@ -78,10 +76,10 @@ function watchWindows(callback) {
 
                         // Capture a pointer to this tab window for use in the setTimeout,
                         // and make a note of the tab windowID (needed for uninstall)
-                        var contentWindow = window.content;
-                        var windowUtils = contentWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                        let contentWindow = window.content;
+                        let windowUtils = contentWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                             .getInterface(Components.interfaces.nsIDOMWindowUtils);
-                        var contentWindowID = windowUtils.outerWindowID;
+                        let contentWindowID = windowUtils.outerWindowID;
 
                         // Only once for per tab in this browser window
                         if (tabCallbackInfo[windowID].children[contentWindowID]) return;
@@ -89,10 +87,10 @@ function watchWindows(callback) {
                         // Allow a little time for the window to start. If recognition
                         // fails on tab open, a later select will still pick it up
                         window.setTimeout(function(contentWindow,tabCallbackInfo,windowID,contentWindowID,callback) {
-                            var menuElem = contentWindow.document.getElementById("menu_rtfScan");
+                            let menuElem = contentWindow.document.getElementById("menu_rtfScan");
                             if (!menuElem) return;
                             // Children are Zotero tab instances and only one can exist
-                            for (var key in tabCallbackInfo[windowID].children) {
+                            for (let key in tabCallbackInfo[windowID].children) {
                                 delete tabCallbackInfo[windowID].children[key];
                             }
                             tabCallbackInfo[windowID].children[contentWindowID] = true;
@@ -114,7 +112,7 @@ function watchWindows(callback) {
                 callback(window);
             }
         }
-        catch(ex) {
+        catch (ex) {
             dump("ERROR (rtf-odf-scan-for-zotero): in watcher(): "+ex);
         }
     }
@@ -155,21 +153,21 @@ function watchWindows(callback) {
         Services.ww.unregisterNotification(windowWatcher);
 
         function restoreRtfScan (win,oldStuff) {
-            var menuElem = win.document.getElementById("menu_rtfScan");
+            let menuElem = win.document.getElementById("menu_rtfScan");
             if (!menuElem) return;
-            var cmdElem = win.document.getElementById("cmd_zotero_rtfScan");
+            let cmdElem = win.document.getElementById("cmd_zotero_rtfScan");
             menuElem.setAttribute("label",oldStuff.oldLabel);
             cmdElem.setAttribute("oncommand", oldStuff.oldRtfScanCommand);
         }
 
         try {
             let someWindow = Services.wm.getMostRecentWindow(null);
-            var windowUtils = someWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+            let windowUtils = someWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                 .getInterface(Components.interfaces.nsIDOMWindowUtils);
-            for (var windowID in tabCallbackInfo) {
+            for (let windowID in tabCallbackInfo) {
 
                 // Get our main window
-                var win = windowUtils.getOuterWindowWithId(parseInt(windowID,10));
+                let win = windowUtils.getOuterWindowWithId(parseInt(windowID,10));
                 if (!win) continue;
 
                 // Remove listener
@@ -180,10 +178,10 @@ function watchWindows(callback) {
 
                 // Tick through the affected child tabs of this browser window
                 // restoring behaviour there too
-                for (var contentWindowID in tabCallbackInfo[windowID].children) {
+                for (let contentWindowID in tabCallbackInfo[windowID].children) {
 
                     // Get content window
-                    var contentWin = windowUtils.getOuterWindowWithId(parseInt(contentWindowID,10));
+                    let contentWin = windowUtils.getOuterWindowWithId(parseInt(contentWindowID,10));
                     if (!contentWin) continue;
 
                     // Restore old behaviour
@@ -235,7 +233,7 @@ function unload(callback, container) {
         let origCallback = callback;
         callback = function() {
             container.removeEventListener("unload", removeUnloader, false);
-            var tabContainer = container.gBrowser.tabContainer;
+            let tabContainer = container.gBrowser.tabContainer;
             tabContainer.removeEventListener("TabSelect", container.tabSelect);
             origCallback();
         };
@@ -246,7 +244,7 @@ function unload(callback, container) {
         try {
             callback();
         }
-        catch(ex) {}
+        catch (ex) {}
     }
     unloaders.push(unloader);
 
@@ -262,31 +260,24 @@ function unload(callback, container) {
 /**
  * Change the menu and slot in a new command
  */
-function startODFScan(window) {
+function changeButtonText(window) {
     logMessage("changeButtonText");
     // Change text in Zotero RTF Scan button
-    var menuElem = window.document.getElementById("menu_rtfScan");
-    var cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
+    let menuElem = window.document.getElementById("menu_rtfScan");
+    let cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
     menuElem.setAttribute("label", "RTF/ODF Scan");
     cmdElem.setAttribute("oncommand","window.openDialog('chrome://rtf-odf-scan-for-zotero/content/rtfScan.xul', 'rtfScan', 'chrome,centerscreen')");
     // Restore of original behaviour is handled elsewhere
     unload(function() {}, window);
-    try {
-        installTranslator();
-    } catch (e) {
-        logMessage("translator install failed: " + e);
-    }
 }
 
 function installTranslator() {
-    if (!reinstallTranslator) return;
-
-    var Zotero = Cc["@zotero.org/Zotero;1"]
+    let Zotero = Cc["@zotero.org/Zotero;1"]
         .getService(Ci.nsISupports)
         .wrappedJSObject;
 
     logMessage("installing ODF scan translator");
-    var data = Zotero.File.getContentsFromURL("resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js");
+    let data = Zotero.File.getContentsFromURL("resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js");
     data = data.match(/^([\s\S]+?}\n\n)([\s\S]+)/);
     data = {
         header: JSON.parse(data[1]),
@@ -294,7 +285,7 @@ function installTranslator() {
     };
 
     logMessage("popping up window");
-    var pw = new Zotero.ProgressWindow();
+    let pw = new Zotero.ProgressWindow();
     pw.changeHeadline("ODF Scan: waiting for Zotero...");
     pw.addDescription("Waiting for Zotero translator framework to initialize...");
     pw.show();
@@ -318,7 +309,7 @@ function startup(data, reason) {
     logMessage("startup");
     // Shift all open and new browser windows
     setDefaultPrefs();
-    watchWindows(startODFScan);
+    watchWindows(changeButtonText);
 }
 
 /**
@@ -334,7 +325,7 @@ function shutdown(data, reason) {
  */
 function install(data, reason) {
     logMessage("install");
-    reinstallTranslator = true;
+    watchWindows(installTranslator);
 }
 
 /**
