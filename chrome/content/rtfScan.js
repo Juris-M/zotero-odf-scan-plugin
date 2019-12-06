@@ -27,12 +27,14 @@
  * @fileOverview Tools for automatically retrieving a citation for the given PDF
  */
 
+var FilePicker = require('zotero/filePicker').default;
+
 
 /**
  * Front end for recognizing PDFs
  * @namespace
  */
-const Zotero_RTFScan = new function() {
+var Zotero_RTFScan = new function() {
     const ACCEPT_ICON =  "chrome://zotero/skin/rtfscan-accept.png";
     const LINK_ICON = "chrome://zotero/skin/rtfscan-link.png";
     const BIBLIOGRAPHY_PLACEHOLDER = "\\{Bibliography\\}";
@@ -46,12 +48,8 @@ const Zotero_RTFScan = new function() {
     let stringBundleService =
     Components.classes["@mozilla.org/intl/stringbundle;1"]
         .getService(Components.interfaces.nsIStringBundleService);
-    let localeService = Components.classes["@mozilla.org/intl/nslocaleservice;1"].
-        getService(Components.interfaces.nsILocaleService);
-    let appLocale = localeService.getApplicationLocale();
-
     let _localizedStringBundle = stringBundleService.createBundle(
-        "chrome://rtf-odf-scan-for-zotero/locale/zotero.properties", appLocale);
+        "chrome://rtf-odf-scan-for-zotero/locale/zotero.properties");
 
 
     function _getString(name, params){
@@ -108,22 +106,20 @@ const Zotero_RTFScan = new function() {
     /**
    * Called to select the file to be processed
    */
-    this.chooseInputFile = function() {
+    this.chooseInputFile = async function () {
     // Hide any error message
         document.getElementById("odf-file-error-message").setAttribute("hidden", "true");
         // get file type
         let fileType = Zotero.Prefs.get("ODFScan.fileType");
         // display file picker
-        const nsIFilePicker = Components.interfaces.nsIFilePicker;
-        let fp = Components.classes["@mozilla.org/filepicker;1"]
-            .createInstance(nsIFilePicker);
-        fp.init(window, _getString("ODFScan.openTitle"), nsIFilePicker.modeOpen);
+        let fp = new FilePicker();
+        fp.init(window, _getString("ODFScan.openTitle"), fp.modeOpen);
 
         let fileExt = fileType;
         if (fileType === "odf") {
             fileExt = "odt";
         } else {
-            fp.appendFilters(nsIFilePicker.filterAll);
+            fp.appendFilters(fp.filterAll);
         }
         fp.appendFilter(_getString("ODFScan." + fileType), "*." + fileExt);
 
@@ -132,15 +128,14 @@ const Zotero_RTFScan = new function() {
         let inputPath = Zotero.Prefs.get("ODFScan."+fileType+".lastInputFile" + outputMode);
         if (inputPath) {
             if (!inputFile) {
-                inputFile = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
-                inputFile.initWithPath(inputPath);
+                inputFile = Zotero.File.pathToFile(inputPath);
             }
             fp.displayDirectory = inputFile.parent;
         }
 
-        let rv = fp.show();
-        if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
-            inputFile = fp.file;
+        let rv = await fp.show();
+        if (rv == fp.returnOK || rv == fp.returnReplace) {
+            inputFile = Zotero.File.pathToFile(fp.file);
             _updatePath();
         }
     };
@@ -148,17 +143,15 @@ const Zotero_RTFScan = new function() {
     /**
    * Called to select the output file
    */
-    this.chooseOutputFile = function() {
+    this.chooseOutputFile = async function() {
         let fileType = Zotero.Prefs.get("ODFScan.fileType");
         let outputMode = Zotero.Prefs.get("ODFScan.outputMode");
         let fileExt = fileType;
         if (fileType === "odf") {
             fileExt = "odt";
         }
-        const nsIFilePicker = Components.interfaces.nsIFilePicker;
-        let fp = Components.classes["@mozilla.org/filepicker;1"]
-            .createInstance(nsIFilePicker);
-        fp.init(window, _getString("ODFScan.saveTitle"), nsIFilePicker.modeSave);
+        let fp = new FilePicker();
+        fp.init(window, _getString("ODFScan.saveTitle"), fp.modeSave);
         fp.appendFilter(_getString("ODFScan." + fileType), "*." + fileExt);
         if (inputFile) {
             let leafName = inputFile.leafName;
@@ -185,15 +178,14 @@ const Zotero_RTFScan = new function() {
         let outputPath = Zotero.Prefs.get("ODFScan."+fileType+".lastOutputFile" + outputMode);
         if (outputPath) {
             if (!outputFile) {
-                outputFile = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
-                outputFile.initWithPath(outputPath);
+                outputFile = Zotero.File.pathToFile(outputPath);
             }
             fp.displayDirectory = outputFile.parent;
         }
 
-        let rv = fp.show();
-        if (rv == nsIFilePicker.returnOK || rv == nsIFilePicker.returnReplace) {
-            outputFile = fp.file;
+        let rv = await fp.show();
+        if (rv == fp.returnOK || rv == fp.returnReplace) {
+            outputFile = Zotero.File.pathToFile(fp.file);
             _updatePath();
         }
     };
@@ -224,18 +216,12 @@ const Zotero_RTFScan = new function() {
    */
 
     function _refreshPath() {
-        if (!inputFile) {
-            inputFile = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
-        }
-        if (!outputFile) {
-            outputFile = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
-        }
         let fileType = Zotero.Prefs.get("ODFScan.fileType");
         let outputMode = Zotero.Prefs.get("ODFScan.outputMode");
         let inputPath = Zotero.Prefs.get("ODFScan."+fileType+".lastInputFile" + outputMode);
         if (inputPath) {
             document.getElementById("input-path").value = inputPath;
-            inputFile.initWithPath(inputPath);
+            inputFile = Zotero.File.pathToFile(inputPath);
         } else {
             inputFile = null;
             document.getElementById("input-path").value = _getString("ODFScan.file.noneSelected.label");
@@ -678,7 +664,7 @@ const Zotero_RTFScan = new function() {
                         .split("\"").join("")
                         .split(/[\\]*&quot;/).join("");
                     let escapedPlaceholder = placeholder.split("&").join("&amp;");
-                    let items = JSON.stringify(items);
+                    items = JSON.stringify(items);
                     items = items.split("\\\\&quot;").join("\\&quot;");
                     items = items.split("\"").join("&quot;");
                     let randstr = this.generateRandomString();
