@@ -24,7 +24,7 @@ class Builder:
 
     if self.beta: self.version += '-beta'
 
-    self.xpi = f'zotero-odf-scan-v{self.version}.xpi'
+    self.xpi = 'zotero-odf-scan-v' + self.version + '.xpi'
 
     self.build()
     if self.release: self.update_rdf()
@@ -42,7 +42,7 @@ class Builder:
     for version in rdf.findall('.//em:version', namespaces=namespaces):
       version.text = self.version
     for link in rdf.findall('.//em:updateLink', namespaces=namespaces):
-      link.text = f'https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v{self.version}/zotero-odf-scan-v{self.version}.xpi'
+      link.text = 'https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v' + self.version + '/zotero-odf-scan-v' + self.version + '.xpi'
     with open('docs/update.rdf', 'wb') as f:
       f.write(etree.tostring(rdf, pretty_print=True))
 
@@ -62,11 +62,11 @@ class Builder:
           with open('chrome/locale/en-US/about.dtd') as f:
             dtd = etree.DTD(f)
 
-            entities = f'<!ENTITY odfscan.version "{self.version}">\n'
+            entities = '<!ENTITY odfscan.version "' + self.version + '">\n'
 
             for entity in list(dtd.entities()):
               if entity.name == 'odfscan.version': continue
-              entities += f'<!ENTITY {entity.name} "{entity.content}">\n'
+              entities += '<!ENTITY ' + entity.name + ' "' + entity.content + '">\n'
           xpi.writestr(file, entities)
 
         else:
