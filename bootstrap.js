@@ -22,7 +22,8 @@ function logMessage(msg) {
 
 function setDefaultPrefs() {
     let branch = Services.prefs.getDefaultBranch(PREF_BRANCH);
-    for (let [key, val] in Iterator(PREFS)) {
+    for (let key in PREFS) {
+        let val = PREFS[key];
         switch (typeof val) {
         case "boolean":
             branch.setBoolPref(key, val);
