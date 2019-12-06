@@ -9,8 +9,8 @@ const PREFS = {
     "ODFScan.odf.lastOutputFiletocitations":"",
     "ODFScan.odf.lastInputFiletomarkers":"",
     "ODFScan.odf.lastOutputFiletomarkers":"",
-    "ODFScan.fileType":"rtf",
-    "ODFScan.outputMode":"tortf",
+    "ODFScan.fileType":"odf",
+    "ODFScan.outputMode":"tocitations",
     "translators.ODFScan.useZoteroSelect":false,
     "translators.ODFScan.includeTitle":false
 };
@@ -153,12 +153,10 @@ function watchWindows(callback) {
 
         Services.ww.unregisterNotification(windowWatcher);
 
-        function restoreRtfScan (win,oldStuff) {
-            let menuElem = win.document.getElementById("menu_rtfScan");
-            if (!menuElem) return;
-            let cmdElem = win.document.getElementById("cmd_zotero_rtfScan");
-            menuElem.setAttribute("label",oldStuff.oldLabel);
-            cmdElem.setAttribute("oncommand", oldStuff.oldRtfScanCommand);
+        // DEBUG: This isn't currently called when the plugin is unloaded
+        function removeMenuItem(win) {
+            let menuElem = win.document.getElementById("menu_odfScan");
+            menuElem.parentNode.removeChild(menuElem);
         }
 
         try {
@@ -174,8 +172,8 @@ function watchWindows(callback) {
                 // Remove listener
                 tabCallbackInfo[windowID].removeListener();
 
-                // Restore behaviour of RTF Scan in the chrome document pane
-                restoreRtfScan(win, tabCallbackInfo[windowID]);
+                // Remove menu item
+                removeMenuItem(win);
 
                 // Tick through the affected child tabs of this browser window
                 // restoring behaviour there too
@@ -186,7 +184,7 @@ function watchWindows(callback) {
                     if (!contentWin) continue;
 
                     // Restore old behaviour
-                    restoreRtfScan(contentWin, tabCallbackInfo[windowID]);
+                    removeMenuItem(contentWin);
                 }
             }
         } catch (e) {
@@ -258,18 +256,14 @@ function unload(callback, container) {
     return removeUnloader;
 }
 
-/**
- * Change the menu and slot in a new command
- */
-function changeButtonText(window) {
-    logMessage("changeButtonText");
-    // Change text in Zotero RTF Scan button
-    let menuElem = window.document.getElementById("menu_rtfScan");
-    let cmdElem = window.document.getElementById("cmd_zotero_rtfScan");
-    menuElem.setAttribute("label", "RTF/ODF Scan");
-    cmdElem.setAttribute("oncommand","window.openDialog('chrome://rtf-odf-scan-for-zotero/content/rtfScan.xul', 'rtfScan', 'chrome,centerscreen')");
-    // Restore of original behaviour is handled elsewhere
-    unload(function() {}, window);
+function addMenuItem(window) {
+    let menu = window.document.getElementById('menu_ToolsPopup')
+    let rtfMenuElem = window.document.getElementById("menu_rtfScan");
+    let odfMenuElem = window.document.createElement('menuitem');
+    odfMenuElem.id = 'menu_odfScan';
+    odfMenuElem.setAttribute("label", "ODF Scan");
+    odfMenuElem.setAttribute("oncommand", "window.openDialog('chrome://rtf-odf-scan-for-zotero/content/rtfScan.xul', 'odfScan', 'chrome,centerscreen')");
+    menu.insertBefore(odfMenuElem, rtfMenuElem.nextSibling);
 }
 
 function installTranslator() {
@@ -310,7 +304,7 @@ function startup(data, reason) {
     logMessage("startup");
     // Shift all open and new browser windows
     setDefaultPrefs();
-    watchWindows(changeButtonText);
+    watchWindows(addMenuItem);
 }
 
 /**

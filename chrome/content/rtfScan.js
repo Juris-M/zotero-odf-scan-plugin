@@ -34,7 +34,7 @@ var FilePicker = require('zotero/filePicker').default;
  * Front end for recognizing PDFs
  * @namespace
  */
-var Zotero_RTFScan = new function() {
+var Zotero_ODFScan = new function() {
     const ACCEPT_ICON =  "chrome://zotero/skin/rtfscan-accept.png";
     const LINK_ICON = "chrome://zotero/skin/rtfscan-link.png";
     const BIBLIOGRAPHY_PLACEHOLDER = "\\{Bibliography\\}";
@@ -244,11 +244,7 @@ var Zotero_RTFScan = new function() {
         document.getElementById("odf-file-error-message").setAttribute("hidden", "true");
 
         // wait a ms so that UI thread gets updated
-        if (Zotero.Prefs.get("ODFScan.fileType") === "rtf") {
-            window.setTimeout(function() { _scanRTF(); }, 1);
-        } else {
-            window.setTimeout(function() { _scanODF(outputMode); }, 1);
-        }
+		window.setTimeout(function() { _scanODF(outputMode); }, 1);
     };
 
     /**
@@ -873,149 +869,6 @@ var Zotero_RTFScan = new function() {
         }
     }
 
-    /**
-   * Scans file for citations, then proceeds to next wizard page.
-   */
-    function _scanRTF() {
-    // set up globals
-        citations = [];
-        citationItemIDs = {};
-
-        unmappedCitationsItem = document.getElementById("unmapped-citations-item");
-        ambiguousCitationsItem = document.getElementById("ambiguous-citations-item");
-        mappedCitationsItem = document.getElementById("mapped-citations-item");
-        unmappedCitationsChildren = document.getElementById("unmapped-citations-children");
-        ambiguousCitationsChildren = document.getElementById("ambiguous-citations-children");
-        mappedCitationsChildren = document.getElementById("mapped-citations-children");
-
-        // set up regular expressions
-        // this assumes that names are >=2 chars or only capital initials and that there are no
-        // more than 4 names
-        const nameRe = "(?:[^ .,;]{2,} |[A-Z].? ?){0,3}[A-Z][^ .,;]+";
-        const creatorRe = "((?:(?:"+nameRe+", )*"+nameRe+"(?:,? and|,? \\&|,) )?"+nameRe+")(,? et al\\.?)?";
-        // TODO: localize "and" term
-        const creatorSplitRe = /(?:,| *(?:and|\&)) +/g;
-        let citationRe = new RegExp("(\\\\\\{|; )("+creatorRe+",? (?:\"([^\"]+)(?:,\"|\",) )?([0-9]{4})[a-z]?)(?:,(?: pp?\.?)? ([^ )]+))?(?=;|\\\\\\})|(([A-Z][^ .,;]+)(,? et al\\.?)? (\\\\\\{([0-9]{4})[a-z]?\\\\\\}))", "gm");
-
-        // read through RTF file and display items as they're found
-        // we could read the file in chunks, but unless people start having memory issues, it's
-        // probably faster and definitely simpler if we don't
-        contents = Zotero.File.getContents(inputFile)
-            .replace(/([^\\\r])\r?\n/, "$1 ")
-            .split("\\'92").join("'")
-            .split("\\rquote ").join("’");
-        let m;
-        let lastCitation = false;
-        while ((m = citationRe.exec(contents))) {
-            // determine whether suppressed or standard regular expression was used
-            let citationString, creators, etAl, title, date, pages, start, end;
-            if (m[2]) {  // standard parenthetical
-                citationString = m[2];
-                creators = m[3];
-                etAl = !!m[4];
-                title = m[5];
-                date = m[6];
-                pages = m[7];
-                start = citationRe.lastIndex-m[0].length;
-                end = citationRe.lastIndex+2;
-            } else {  // suppressed
-                citationString = m[8];
-                creators = m[9];
-                etAl = !!m[10];
-                title = false;
-                date = m[12];
-                pages = false;
-                start = citationRe.lastIndex-m[11].length;
-                end = citationRe.lastIndex;
-            }
-            citationString = citationString
-                .split("\\{").join("{")
-                .split("\\}").replace("}");
-            let suppressAuthor = !m[2];
-
-            if (lastCitation && lastCitation.end >= start) {
-                // if this citation is just an extension of the last, add items to it
-                lastCitation.citationStrings.push(citationString);
-                lastCitation.pages.push(pages);
-                lastCitation.end = end;
-            } else {
-                // otherwise, add another citation
-                lastCitation = {"citationStrings":[citationString], "pages":[pages], "start":start,
-                    "end":end, "suppressAuthor":suppressAuthor};
-                citations.push(lastCitation);
-            }
-
-            // only add each citation once
-            if (citationItemIDs[citationString]) continue;
-            //Zotero.debug("Found citation "+citationString);
-
-            // for each individual match, look for an item in the database
-            let s = new Zotero.Search;
-            creators = creators.replace(".", "");
-            // TODO: localize "et al." term
-            creators = creators.split(creatorSplitRe);
-
-            for (let i=0; i<creators.length; i++) {
-                if (!creators[i]) {
-                    if (i == creators.length-1) {
-                        break;
-                    } else {
-                        creators.splice(i, 1);
-                    }
-                }
-
-                let spaceIndex = creators[i].lastIndexOf(" ");
-                let lastName = spaceIndex == -1 ? creators[i] : creators[i].substr(spaceIndex+1);
-                s.addCondition("lastName", "contains", lastName);
-            }
-            if (title) s.addCondition("title", "contains", title);
-            s.addCondition("date", "is", date);
-            let ids = s.search();
-            //Zotero.debug("Mapped to "+ids);
-            citationItemIDs[citationString] = ids;
-
-            if (!ids) {  // no mapping found
-                unmappedCitationsChildren.appendChild(_generateItem(citationString, ""));
-                unmappedCitationsItem.hidden = undefined;
-            } else {  // some mapping found
-                let items = Zotero.Items.get(ids);
-                if (items.length > 1) {
-                    // check to see how well the author list matches the citation
-                    let matchedItems = [];
-                    for (let i=0; i<items.length; i++) {
-                        if (_matchesItemCreators(creators, items[i])) matchedItems.push(items[i]);
-                    }
-
-                    if (matchedItems.length != 0) items = matchedItems;
-                }
-
-                if (items.length == 1) {  // only one mapping
-                    mappedCitationsChildren.appendChild(_generateItem(citationString, items[0].getField("title")));
-                    citationItemIDs[citationString] = [items[0].id];
-                    mappedCitationsItem.hidden = undefined;
-                } else {        // ambiguous mapping
-                    let treeitem = _generateItem(citationString, "");
-
-                    // generate child items
-                    let treeitemChildren = document.createElement("treechildren");
-                    treeitem.appendChild(treeitemChildren);
-                    for (let i=0; i<items.length; i++) {
-                        treeitemChildren.appendChild(_generateItem("", items[i].getField("title"), true));
-                    }
-
-                    treeitem.setAttribute("container", "true");
-                    treeitem.setAttribute("open", "true");
-                    ambiguousCitationsChildren.appendChild(treeitem);
-                    ambiguousCitationsItem.hidden = undefined;
-                }
-            }
-        }
-
-        // when scanning is complete, go to citations page
-        document.documentElement.canAdvance = true;
-        document.documentElement.advance();
-    }
-
     function _generateItem(citationString, itemName, accept) {
         const treeitem = document.createElement("treeitem");
         const treerow = document.createElement("treerow");
@@ -1240,19 +1093,19 @@ var Zotero_RTFScan = new function() {
     };
 
     /**
-   * Switches between RTF and ODF file mode.
+   * Switches between file modes
    */
     this.fileTypeSwitch = function (mode) {
         if (!mode) {
-            mode = "rtf";
+            mode = "odf-tocitations";
         }
         mode = mode.split("-");
         let fileType = mode[0];
         let outputMode = mode[1];
         if (!outputMode) {
             // Keep things sane
-            mode = "rtf";
-            outputMode = "tortf";
+            mode = "odf-tocitations";
+            outputMode = "tocitations";
         }
         let nodeIdStubs = [
             "file-type-description",
