@@ -1,7 +1,7 @@
 <!ENTITY zotero.odfScan.introPage.description.start "Zotero can convert citation markers in the drag-and-drop Scannable Cite format to active Zotero citations. Citation markers can be edited after creation to add prefix, suffix and pinpoint details, as illustrated below. For further details, see the ">
 <!ENTITY zotero.odfScan.introPage.link "project website">
 <!ENTITY zotero.odfScan.introPage.description.end ".">
-<!ENTITY zotero.toolbar.rtfOdfScan.label "RTF/ODF Scan">
+<!ENTITY zotero.toolbar.rtfOdfScan.label "ODF Scan">
 <!ENTITY zotero.odfScan.introPage.description2 "To get started, select an ODF input file and an output file below:">
 <!ENTITY zotero.odfScan.introPage.example1 "&#8627; Explanatory prefix in first field, readable cite in second field.">
 <!ENTITY zotero.odfScan.introPage.example2 "&#8627; Page pinpoint in third field, explanatory suffix in fourth field.">
@@ -30,5 +30,5 @@
 <!ENTITY zotero.rtfScan.scanPage.description "Zotero is scanning your document for citations. Please be patient.">
 <!ENTITY zotero.rtfScan.scanPage.label "Scanning for Citations">
 <!ENTITY zotero.rtfScan.stylePage.label "Document Formatting">
-<!ENTITY zotero.rtfScan.title "RTF Scan">
+<!ENTITY zotero.rtfScan.title "ODF Scan">
 <!ENTITY zotero.rtfScan.unmappedCitations.label "Unmapped Citations">

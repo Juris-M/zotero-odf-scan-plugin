@@ -13,13 +13,12 @@
 	<script src="rtfScan.js"/>
 	
 	<wizardpage id="intro-page" label="&zotero.rtfScan.introPage.label;"
-	onpageshow="Zotero_RTFScan.introPageShowing()"
-	onpageadvanced="Zotero_RTFScan.introPageAdvanced()">
+	onpageshow="Zotero_ODFScan.introPageShowing()"
+	onpageadvanced="Zotero_ODFScan.introPageAdvanced()">
 		<groupbox>
 		  <caption label="File type"/>
 		  <radiogroup label="Conversion method" id="file-type-selector" orient="horizontal"
-					  onclick="Zotero_RTFScan.fileTypeSwitch(this.selectedItem.value);">
-			<radio id="file-type-selector-rtf-tortf" label="RTF" value="rtf-tortf"/>
+					  onclick="Zotero_ODFScan.fileTypeSwitch(this.selectedItem.value);">
 			<radio id="file-type-selector-odf-tocitations" label="ODF (to citations)" value="odf-tocitations"/>
 			<radio id="file-type-selector-odf-tomarkers" label="ODF (to markers)" value="odf-tomarkers"/>
 		  </radiogroup>
@@ -49,7 +48,7 @@
 			<caption label="&zotero.rtfScan.inputFile.label;"/>
 			<hbox align="center">
 				<textbox value="&zotero.file.noneSelected.label;" id="input-path" flex="1" readonly="true"/>
-				<button id="choose-input-file" label="&zotero.file.choose.label;" onclick="Zotero_RTFScan.chooseInputFile()"/>
+				<button id="choose-input-file" label="&zotero.file.choose.label;" onclick="Zotero_ODFScan.chooseInputFile()"/>
 			</hbox>
             <label id="odf-file-error-message" style="color:red;" value="There was an error processing this file" hidden="true"/>
 		</groupbox>
@@ -57,22 +56,22 @@
 			<caption label="&zotero.rtfScan.outputFile.label;"/>
 			<hbox align="center">
 				<textbox value="&zotero.file.noneSelected.label;" id="output-path" flex="1" readonly="true"/>
-				<button id="choose-output-file" label="&zotero.file.choose.label;" onclick="Zotero_RTFScan.chooseOutputFile()"/>
+				<button id="choose-output-file" label="&zotero.file.choose.label;" onclick="Zotero_ODFScan.chooseOutputFile()"/>
 			</hbox>
 		</groupbox>
 	</wizardpage>
 	
 	<wizardpage id="scan-page" label="&zotero.rtfScan.scanPage.label;"
-	onpageshow="Zotero_RTFScan.scanPageShowing()">
+	onpageshow="Zotero_ODFScan.scanPageShowing()">
 		<description width="700">&zotero.rtfScan.scanPage.description;</description>
 		<progressmeter id="scan-page-progress-indicator" mode="undetermined" flex="1"/>
 	</wizardpage>
 	
 	<wizardpage id="citations-page" label="&zotero.rtfScan.citationsPage.label;"
-	onpageshow="Zotero_RTFScan.citationsPageShowing()"
-	onpagerewound="return Zotero_RTFScan.citationsPageRewound();">
+	onpageshow="Zotero_ODFScan.citationsPageShowing()"
+	onpagerewound="return Zotero_ODFScan.citationsPageRewound();">
 	  <description width="700">&zotero.rtfScan.citationsPage.description;</description>
-	  <tree flex="1" id="tree" hidecolumnpicker="true" onclick="Zotero_RTFScan.treeClick(event)">
+	  <tree flex="1" id="tree" hidecolumnpicker="true" onclick="Zotero_ODFScan.treeClick(event)">
 		<treecols>
 		  <treecol label="&zotero.rtfScan.citation.label;" id="pdf-col" flex="1" primary="true"/>
 		  <splitter class="tree-splitter"/>
@@ -103,8 +102,8 @@
 	</wizardpage>
 	
 	<wizardpage id="style-page" label="&zotero.rtfScan.stylePage.label;"
-	onpageadvanced="Zotero_RTFScan.stylePageAdvanced()"
-	onpageshow="Zotero_RTFScan.stylePageShowing()">
+	onpageadvanced="Zotero_ODFScan.stylePageAdvanced()"
+	onpageshow="Zotero_ODFScan.stylePageShowing()">
 		<groupbox flex="1">
 			<caption label="&zotero.bibliography.style.label;"/>
 			<listbox id="style-listbox" onselect="Zotero_File_Interface_Bibliography.styleChanged()" flex="1"/>
@@ -120,7 +119,7 @@
 	</wizardpage>
 	
 	<wizardpage id="format-page" label="&zotero.rtfScan.formatPage.label;"
-	onpageshow="Zotero_RTFScan.formatPageShowing()">
+	onpageshow="Zotero_ODFScan.formatPageShowing()">
 		<description width="700">&zotero.rtfScan.formatPage.description;</description>
 		<progressmeter id="format-progress-indicator" mode="undetermined" flex="1"/>
 	</wizardpage>
