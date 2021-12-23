@@ -58,7 +58,6 @@ function doExport() {
             let m = item.uri.match(/http:\/\/zotero\.org\/(users|groups)\/([^\/]+)\/items\/(.+)/);
             let prefix;
             let lib;
-            let key;
             if (m) {
                 if (m[1] === "users") {
                     prefix = "zu:";
