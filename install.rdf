@@ -3,7 +3,7 @@
     <em:id>rtf-odf-scan-for-zotero@mystery-lab.com</em:id>
     <em:type>2</em:type>
     <em:name>ODF Scan for Zotero</em:name>
-    <em:version>2.0.43</em:version>
+    <em:version>2.0.44</em:version>
     <em:creator>Frank Bennett</em:creator>
     <em:contributor/>
     <em:description>Adds convertible citation marker support to Zotero.</em:description>
@@ -17,7 +17,7 @@
         <em:id>zotero@chnm.gmu.edu</em:id>
         <!-- Zotero -->
         <em:minVersion>4.0</em:minVersion>
-        <em:maxVersion>5.0.*</em:maxVersion>
+        <em:maxVersion>6.0.*</em:maxVersion>
       </Description>
     </em:targetApplication>
     <em:targetApplication>
@@ -25,7 +25,7 @@
         <!-- Juris-M -->
         <em:id>juris-m@juris-m.github.io</em:id>
         <em:minVersion>4.0</em:minVersion>
-        <em:maxVersion>5.0.*</em:maxVersion>
+        <em:maxVersion>6.0.*</em:maxVersion>
       </Description>
     </em:targetApplication>
   </Description>
