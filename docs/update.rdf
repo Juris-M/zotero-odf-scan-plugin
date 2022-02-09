@@ -4,13 +4,13 @@
       <Seq>
         <li>
           <Description>
-            <em:version>2.0.43</em:version>
+            <em:version>2.0.44</em:version>
             <em:targetApplication>
               <Description>
                 <em:id>zotero@chnm.gmu.edu</em:id>
                 <em:minVersion>5.0</em:minVersion>
                 <em:maxVersion>5.0.*</em:maxVersion>
-                <em:updateLink>https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v2.0.43/zotero-odf-scan-v2.0.43.xpi</em:updateLink>
+                <em:updateLink>https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v2.0.44/zotero-odf-scan-v2.0.44.xpi</em:updateLink>
               </Description>
             </em:targetApplication>
             <em:targetApplication>
@@ -18,7 +18,7 @@
                 <em:id>juris-m@juris-m.github.io</em:id>
                 <em:minVersion>5.0</em:minVersion>
                 <em:maxVersion>5.0.*</em:maxVersion>
-                <em:updateLink>https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v2.0.43/zotero-odf-scan-v2.0.43.xpi</em:updateLink>
+                <em:updateLink>https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v2.0.44/zotero-odf-scan-v2.0.44.xpi</em:updateLink>
               </Description>
             </em:targetApplication>
           </Description>
