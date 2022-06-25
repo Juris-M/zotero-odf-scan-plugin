@@ -1,6 +1,6 @@
 {
   "name": "zotero-odf-scan-plugin",
-  "version": "2.0.44",
+  "version": "2.0.45",
   "description": "Zotero ODF Scan",
   "directories": {
     "doc": "docs"
