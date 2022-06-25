@@ -27,7 +27,14 @@
  * @fileOverview Tools for automatically retrieving a citation for the given PDF
  */
 
-var FilePicker = require('zotero/filePicker').default;
+ try {
+    // Zotero 6
+    var FilePicker = require('zotero/modules/filePicker').default;
+}
+catch (e) {
+    // Zotero 5
+    var FilePicker = require('zotero/filePicker').default;
+}
 
 
 /**
@@ -401,7 +408,7 @@ var Zotero_ODFScan = new function() {
                         if ("object" === typeof uri) {
                             for (let u of uri) {
                                 if (u) {
-                                    m_uri = u.match(/\/(users|groups)\/([0-9]+|local\/[^/]+)\/items\/(.+)/);
+                                    m_uri = u.match(/\/(users|groups)\/([0-9]+|local(?:\/[^/]+)?)\/items\/(.+)/);
                                     if (m_uri) {
                                         break;
                                     }
