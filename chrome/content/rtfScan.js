@@ -388,18 +388,14 @@ var Zotero_ODFScan = new function() {
                     if (i === 0 && item["suppress-author"]) {
                         m_plaintext = "-" + m_plaintext;
                     }
-                    Zotero.debug(item);
-                    Zotero.debug(item.id)
                     let isUser = false;
                     // Zotero 6+ has only item.uris
                     if ((item.uri && item.uri.length) || (item.uris && item.uris.length)) {
                         // if has uri, get value, identify as user or group, and fashion zotero://select ref
-                        Zotero.debug(item.uris)
                         let uri = item.uri;
                         if (!uri) {
                             uri = item.uris
                         }
-                        Zotero.debug(uri);
                         let key = [];
                         let m_uri = false;
                         if ("object" === typeof uri) {
