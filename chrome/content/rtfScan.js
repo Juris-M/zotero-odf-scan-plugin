@@ -401,7 +401,7 @@ var Zotero_ODFScan = new function() {
                         if ("object" === typeof uri) {
                             for (let u of uri) {
                                 if (u) {
-                                    m_uri = u.match(/\/(users|groups)\/([0-9]+|local)\/items\/(.+)/);
+                                    m_uri = u.match(/\/(users|groups)\/([0-9]+|local\/[^/]+)\/items\/(.+)/);
                                     if (m_uri) {
                                         break;
                                     }
@@ -412,7 +412,7 @@ var Zotero_ODFScan = new function() {
                             if (m_uri[1] === "users") {
                                 isUser = true;
                                 // Here is where the information loss from using zotero://select shines through.
-                                if (m_uri[2] === "local" || Zotero.Prefs.get("translators.ODFScan.useZoteroSelect")) {
+                                if (m_uri[2].includes("local") || Zotero.Prefs.get("translators.ODFScan.useZoteroSelect")) {
                                     key.push("0");
                                 } else {
                                     key.push(m_uri[2]);
@@ -641,7 +641,7 @@ var Zotero_ODFScan = new function() {
                     item.key = myidlst[1];
                     if (myidlst[0] == "0" || params.isUserItem) {
                         let userID = Zotero.userID;
-                        if (userID === false) {
+                        if (!userID || userID === false) {
                             userID = "local";
                         }
                         item.uri = ["http://zotero.org/users/" + userID + "/items/" + myidlst[1]];
