@@ -646,11 +646,15 @@ var Zotero_ODFScan = new function() {
                 if (myidlst.length === 2) {
                     // the real deal. construct uris
                     item.key = myidlst[1];
-                    if (myidlst[0] == "0" || params.isUserItem) {
-                        let userID = Zotero.userID;
-                        if (!userID || userID === false) {
+                    if (params.isUserItem) {
+                        // this doesn't seem to work in Zotero 6: also not clear why it's preferable to using the id in the string
+                        // let userID = Zotero.userID;
+                        if (myidlst[0] == "0") {
                             userID = "local";
                         }
+                        else {
+                            userID = myidlst[0];
+                        }                            
                         item.uri = ["http://zotero.org/users/" + userID + "/items/" + myidlst[1]];
                         item.uris = item.uri.slice();
                     } else {
