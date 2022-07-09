@@ -647,10 +647,10 @@ var Zotero_ODFScan = new function() {
                     // the real deal. construct uris
                     item.key = myidlst[1];
                     if (params.isUserItem) {
-                        // this doesn't seem to work in Zotero 6: also not clear why it's preferable to using the id in the string
-                        // let userID = Zotero.userID;
+                        // If we ever want to go back to using the local UserID, this should work
+                        // let userID = Zotero.Users.getCurrentUserID();
                         if (myidlst[0] == "0") {
-                            userID = "local";
+                            userID = 'local/' + Zotero.Users.getLocalUserKey();
                         }
                         else {
                             userID = myidlst[0];
