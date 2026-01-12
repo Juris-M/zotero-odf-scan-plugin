@@ -40,11 +40,12 @@ function setDefaultPrefs() {
     }
 }
 
-function installTranslator() {
+function installTranslator(rootURI) {
     log("Installing ODF scan translator");
     try {
-        // Use resource:// URL which is properly registered in chrome.manifest
-        let translatorPath = "resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js";
+        // Use rootURI-based path for Zotero 7+ (chrome.manifest not processed)
+        let translatorPath = rootURI + "resource/translators/Scannable%20Cite.js";
+        log("Loading translator from: " + translatorPath);
         let data = Zotero.File.getContentsFromURL(translatorPath);
         data = data.match(/^([\s\S]+?}\n\n)([\s\S]+)/);
         if (!data) {
@@ -78,10 +79,10 @@ function installTranslator() {
     }
 }
 
-async function install() {
+async function install({ id, version, rootURI }) {
     log("Install hook called");
     await Zotero.Schema.schemaUpdatePromise;
-    installTranslator();
+    installTranslator(rootURI);
 }
 
 async function startup({ id, version, rootURI }) {

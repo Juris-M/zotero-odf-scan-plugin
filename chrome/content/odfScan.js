@@ -67,8 +67,11 @@ var Zotero_ODFScan = {
     },
 
     openDialog(parentWindow) {
+        // Use rootURI instead of chrome:// URL for Zotero 7+
+        let dialogURL = this.rootURI + 'chrome/content/rtfScan.xul';
+        this.log("Opening dialog: " + dialogURL);
         let dialog = parentWindow.openDialog(
-            'chrome://rtf-odf-scan-for-zotero/content/rtfScan.xul',
+            dialogURL,
             'odfScan',
             'chrome,centerscreen,resizable=yes'
         );
