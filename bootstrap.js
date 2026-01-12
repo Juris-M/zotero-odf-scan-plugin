@@ -43,8 +43,8 @@ function setDefaultPrefs() {
 function installTranslator() {
     log("Installing ODF scan translator");
     try {
-        // Use chrome:// URL instead of resource://
-        let translatorPath = "chrome://rtf-odf-scan-for-zotero/content/../resource/translators/Scannable%20Cite.js";
+        // Use resource:// URL which is properly registered in chrome.manifest
+        let translatorPath = "resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js";
         let data = Zotero.File.getContentsFromURL(translatorPath);
         data = data.match(/^([\s\S]+?}\n\n)([\s\S]+)/);
         if (!data) {
