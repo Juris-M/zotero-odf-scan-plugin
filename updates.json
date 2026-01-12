@@ -1,0 +1,23 @@
+{
+  "addons": {
+    "rtf-odf-scan-for-zotero@mystery-lab.com": {
+      "updates": [
+        {
+          "version": "2.0.48",
+          "update_link": "https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v2.0.48/zotero-odf-scan-v2.0.48.xpi",
+          "update_hash": "sha256:fe289f09dc11586f909fa2f380b9ddb298c7158d0f3ee688075898997cc55433",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "60.9",
+              "strict_max_version": "60.9"
+            },
+            "zotero": {
+              "strict_min_version": "6.999",
+              "strict_max_version": "7.0.*"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
