@@ -1,7 +1,5 @@
-Services.scriptloader.loadSubScript("resource://gre/modules/osfile.jsm");
-
-const PREF_BRANCH = "extensions.zotero.";
-const PREFS = {
+var PREF_BRANCH = "extensions.zotero.";
+var PREFS = {
     "ODFScan.rtf.lastInputFiletortf": "",
     "ODFScan.rtf.lastOutputFiletortf": "",
     "ODFScan.odf.lastInputFiletocitations": "",
@@ -45,8 +43,15 @@ function setDefaultPrefs() {
 function installTranslator() {
     log("Installing ODF scan translator");
     try {
-        let data = Zotero.File.getContentsFromURL("resource://rtf-odf-scan-for-zotero/translators/Scannable%20Cite.js");
+        // Use chrome:// URL instead of resource://
+        let translatorPath = "chrome://rtf-odf-scan-for-zotero/content/../resource/translators/Scannable%20Cite.js";
+        let data = Zotero.File.getContentsFromURL(translatorPath);
         data = data.match(/^([\s\S]+?}\n\n)([\s\S]+)/);
+        if (!data) {
+            log("Failed to parse translator file");
+            return;
+        }
+
         data = {
             header: JSON.parse(data[1]),
             code: data[2],
