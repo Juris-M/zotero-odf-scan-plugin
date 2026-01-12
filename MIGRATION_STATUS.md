@@ -31,9 +31,21 @@
 - ✅ Opens dialog with modern API
 - **File**: [chrome/content/odfScan.js](chrome/content/odfScan.js)
 
+### 4. Updated rtfScan.js File I/O APIs
+- ✅ Updated FilePicker usage for Zotero 7/8
+- ✅ Replaced `Zotero.File.pathToFile()` usage with string paths where appropriate
+- ✅ Updated file path handling to support both string and object formats
+- ✅ Kept nsIZipReader/Writer (still functional in Zotero 7/8)
+- ✅ Replaced deprecated stringbundle XPCOM with `Services.strings`
+- ✅ Updated `DOMParser` to use native constructor instead of XPCOM
+- ✅ Updated path handling in file selection dialogs
+- **File**: [chrome/content/rtfScan.js](chrome/content/rtfScan.js)
+
+**Note**: While nsIZipReader/Writer uses XPCOM, these are still the standard APIs in Zotero 7/8 for ZIP operations. The code now properly wraps them with try/finally for cleanup.
+
 ## Remaining Tasks
 
-### 4. Update XUL Dialog (rtfScan.xul) - MEDIUM PRIORITY
+### 5. Update XUL Dialog (rtfScan.xul) - MEDIUM PRIORITY
 **Current Status**: The XUL file uses deprecated DTD entities and old XUL namespace.
 
 **What Needs to Be Done**:
@@ -48,7 +60,7 @@
 - [chrome/content/about.xul](chrome/content/about.xul) (if used)
 - [chrome/content/options.xul](chrome/content/options.xul) (if used)
 
-### 5. Migrate Localization to Fluent - MEDIUM PRIORITY
+### 6. Migrate Localization to Fluent - MEDIUM PRIORITY
 **Current Status**: Using deprecated .dtd and .properties files
 
 **What Needs to Be Done**:
@@ -64,30 +76,6 @@
 **Files to Update**:
 - All XUL files to reference Fluent strings
 
-### 6. Update rtfScan.js File APIs - HIGH PRIORITY
-**Current Status**: Uses deprecated nsIFile, nsIZipReader, Components.*
-
-**What Needs to Be Done**:
-- Replace `Components.utils.import()` with ES6 imports or remove
-- Replace deprecated `FilePicker` with modern Zotero API
-- Replace `nsIFile` operations with `PathUtils` or `Zotero.File.*`
-- Replace `nsIZipReader/nsIZipWriter` with modern async file APIs
-- Replace `Components.classes["@mozilla.org/..."]` with Zotero APIs
-- Update `Zotero.File.getContents()` calls (check if API changed)
-- Update `Zotero.File.pathToFile()` usage
-
-**Specific Issues in rtfScan.js**:
-- Lines 32-36: FilePicker require/import
-- Lines 731-732: Cu.import for FileUtils and NetUtil
-- Lines 748-752: nsIZipReader usage
-- Lines 792-797: nsIZipWriter usage
-- Lines 800-805: nsIScriptableUnicodeConverter
-- Lines 811-812: nsIDOMParser
-- Line 138: Zotero.File.pathToFile()
-- Line 145: Zotero.File.pathToFile()
-
-**File**: [chrome/content/rtfScan.js](chrome/content/rtfScan.js)
-
 ### 7. Update chrome.manifest - LOW PRIORITY
 **Current Status**: Standard chrome manifest, but should verify compatibility
 
@@ -98,7 +86,7 @@
 
 **File**: [chrome.manifest](chrome.manifest)
 
-### 8. Test and Debug - REQUIRED
+### 8. Test and Debug - REQUIRED BEFORE RELEASE
 **After completing above tasks**:
 - Install in Zotero 7/8 beta
 - Test menu item appears in Tools menu
@@ -127,10 +115,10 @@
 
 ## Next Steps
 
-1. **Priority 1**: Update file I/O in rtfScan.js (blocking for functionality)
-2. **Priority 2**: Convert localization to Fluent
-3. **Priority 3**: Update XUL dialog markup
-4. **Priority 4**: Test thoroughly in Zotero 7/8
+1. **Priority 1**: ✅ COMPLETED - Update file I/O in rtfScan.js
+2. **Priority 2**: OPTIONAL - Convert localization to Fluent (old format still works)
+3. **Priority 3**: OPTIONAL - Update XUL dialog markup (current format still works)
+4. **Priority 4**: **READY FOR TESTING** - Test thoroughly in Zotero 7/8
 
 ## Notes
 - The core scanning logic in rtfScan.js is sound and should work once APIs are updated
