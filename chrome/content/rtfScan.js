@@ -27,14 +27,9 @@
  * @fileOverview Tools for automatically retrieving a citation for the given PDF
  */
 
- try {
-    // Zotero 6
-    var FilePicker = require('zotero/modules/filePicker').default;
-}
-catch (e) {
-    // Zotero 5
-    var FilePicker = require('zotero/filePicker').default;
-}
+ // FilePicker is now available globally in Zotero 7+
+// If not available, fall back to Zotero.FilePicker
+var FilePicker = window.FilePicker || Zotero.FilePicker;
 
 
 /**
@@ -42,6 +37,8 @@ catch (e) {
  * @namespace
  */
 var Zotero_ODFScan = new function() {
+    Zotero.debug("ODF Scan: rtfScan.js loading");
+
     const ACCEPT_ICON =  "chrome://zotero/skin/rtfscan-accept.png";
     const LINK_ICON = "chrome://zotero/skin/rtfscan-link.png";
     const BIBLIOGRAPHY_PLACEHOLDER = "\\{Bibliography\\}";
@@ -52,28 +49,59 @@ var Zotero_ODFScan = new function() {
     let citations, citationItemIDs, allCitedItemIDs, contents;
 
     // Load in the localization stringbundle for use by getString(name)
-    let stringBundleService =
-    Components.classes["@mozilla.org/intl/stringbundle;1"]
-        .getService(Components.interfaces.nsIStringBundleService);
-    let _localizedStringBundle = stringBundleService.createBundle(
-        "chrome://rtf-odf-scan-for-zotero/locale/zotero.properties");
+    // Note: This will fail in Zotero 7+ because chrome:// URLs don't work
+    // We'll catch the error and fall back to English strings
+    let _localizedStringBundle = null;
+    try {
+        Zotero.debug("ODF Scan: Attempting to load stringbundle");
+        let stringBundleService = Services.strings;
+        _localizedStringBundle = stringBundleService.createBundle(
+            "chrome://rtf-odf-scan-for-zotero/locale/zotero.properties");
+        Zotero.debug("ODF Scan: Stringbundle loaded successfully");
+    } catch (e) {
+        Zotero.debug("ODF Scan: Failed to load stringbundle: " + e);
+        Zotero.debug("ODF Scan: Will use fallback English strings");
+    }
 
+
+    // Fallback English strings for when stringbundle can't load
+    const FALLBACK_STRINGS = {
+        "fileInterface.itemsWereImported": "%S items were imported",
+        "recognizePDF.noMatches": "No matches found",
+        "recognizePDF.asked": "Asked",
+        "recognizePDF.complete": "Recognition complete",
+        "recognizePDF.error": "An error occurred during recognition"
+    };
 
     function _getString(name, params){
         let l10n;
         try {
-            if (params != undefined){
-                if (typeof params != "object"){
-                    params = [params];
+            if (_localizedStringBundle) {
+                if (params != undefined){
+                    if (typeof params != "object"){
+                        params = [params];
+                    }
+                    l10n = _localizedStringBundle.formatStringFromName(name, params, params.length);
                 }
-                l10n = _localizedStringBundle.formatStringFromName(name, params, params.length);
-            }
-            else {
-                l10n = _localizedStringBundle.GetStringFromName(name);
+                else {
+                    l10n = _localizedStringBundle.GetStringFromName(name);
+                }
+            } else {
+                // Use fallback strings
+                l10n = FALLBACK_STRINGS[name] || name;
+                if (params != undefined && l10n.includes("%S")) {
+                    if (typeof params != "object"){
+                        params = [params];
+                    }
+                    for (let param of params) {
+                        l10n = l10n.replace("%S", param);
+                    }
+                }
             }
         }
         catch (e){
-            throw ("Localized string not available for " + name);
+            Zotero.debug("ODF Scan: Failed to get string '" + name + "': " + e);
+            l10n = FALLBACK_STRINGS[name] || name;
         }
         return l10n;
     }
@@ -85,18 +113,48 @@ var Zotero_ODFScan = new function() {
    * Called when the first page is shown; loads target file from preference, if one is set
    */
     this.introPageShowing = function() {
-        let fileType = Zotero.Prefs.get("ODFScan.fileType");
-        let outputMode = Zotero.Prefs.get("ODFScan.outputMode");
-        let mode_string = [fileType];
-        if (outputMode) {
-            mode_string.push(outputMode);
+        Zotero.debug("ODF Scan: introPageShowing called");
+        try {
+            // Attach event listeners for file picker buttons
+            document.getElementById("choose-input-file")
+                .addEventListener('click', this.chooseInputFile.bind(this));
+            document.getElementById("choose-output-file")
+                .addEventListener('click', this.chooseOutputFile.bind(this));
+            Zotero.debug("ODF Scan: Event listeners attached");
+
+            let fileType = Zotero.Prefs.get("ODFScan.fileType");
+            let outputMode = Zotero.Prefs.get("ODFScan.outputMode");
+            Zotero.debug("ODF Scan: fileType=" + fileType + ", outputMode=" + outputMode);
+
+            let mode_string = [fileType];
+            if (outputMode) {
+                mode_string.push(outputMode);
+            }
+            mode_string = mode_string.join("-");
+            Zotero.debug("ODF Scan: Looking for selector: file-type-selector-" + mode_string);
+
+            let selectedNode = document.getElementById("file-type-selector-" + mode_string);
+            let selector = document.getElementById("file-type-selector");
+
+            if (selectedNode && selector) {
+                selector.selectedItem = selectedNode;
+                this.fileTypeSwitch(selectedNode.value);
+                Zotero.debug("ODF Scan: File type selector set successfully");
+            } else {
+                Zotero.debug("ODF Scan: WARNING - Could not find selector elements");
+            }
+
+            let inputButton = document.getElementById("choose-input-file");
+            if (inputButton) {
+                inputButton.focus();
+                Zotero.debug("ODF Scan: Input button focused");
+            } else {
+                Zotero.debug("ODF Scan: WARNING - Could not find input button");
+            }
+        } catch (e) {
+            Zotero.debug("ODF Scan: ERROR in introPageShowing: " + e);
+            Zotero.debug(e.stack);
         }
-        mode_string = mode_string.join("-");
-        let selectedNode = document.getElementById("file-type-selector-" + mode_string);
-        let selector = document.getElementById("file-type-selector");
-        selector.selectedItem = selectedNode;
-        this.fileTypeSwitch(selectedNode.value);
-        document.getElementById("choose-input-file").focus();
     };
 
     /**
@@ -106,8 +164,10 @@ var Zotero_ODFScan = new function() {
     // get file type
         let fileType = Zotero.Prefs.get("ODFScan.fileType");
         let outputMode = Zotero.Prefs.get("ODFScan.outputMode");
-        Zotero.Prefs.set("ODFScan."+fileType+".lastInputFile" + outputMode, inputFile.path);
-        Zotero.Prefs.set("ODFScan."+fileType+".lastOutputFile" + outputMode, outputFile.path);
+        let inputPath = typeof inputFile === 'string' ? inputFile : inputFile.path;
+        let outputPath = typeof outputFile === 'string' ? outputFile : outputFile.path;
+        Zotero.Prefs.set("ODFScan."+fileType+".lastInputFile" + outputMode, inputPath);
+        Zotero.Prefs.set("ODFScan."+fileType+".lastOutputFile" + outputMode, outputPath);
     };
 
     /**
@@ -134,15 +194,17 @@ var Zotero_ODFScan = new function() {
         let outputMode = Zotero.Prefs.get("ODFScan.outputMode");
         let inputPath = Zotero.Prefs.get("ODFScan."+fileType+".lastInputFile" + outputMode);
         if (inputPath) {
-            if (!inputFile) {
-                inputFile = Zotero.File.pathToFile(inputPath);
+            try {
+                let pathObj = PathUtils.parent(inputPath);
+                fp.displayDirectory = pathObj;
+            } catch (e) {
+                // Invalid path, ignore
             }
-            fp.displayDirectory = inputFile.parent;
         }
 
         let rv = await fp.show();
         if (rv == fp.returnOK || rv == fp.returnReplace) {
-            inputFile = Zotero.File.pathToFile(fp.file);
+            inputFile = fp.file;
             _updatePath();
         }
     };
@@ -184,15 +246,17 @@ var Zotero_ODFScan = new function() {
         outputMode = Zotero.Prefs.get("ODFScan.outputMode");
         let outputPath = Zotero.Prefs.get("ODFScan."+fileType+".lastOutputFile" + outputMode);
         if (outputPath) {
-            if (!outputFile) {
-                outputFile = Zotero.File.pathToFile(outputPath);
+            try {
+                let pathObj = PathUtils.parent(outputPath);
+                fp.displayDirectory = pathObj;
+            } catch (e) {
+                // Invalid path, ignore
             }
-            fp.displayDirectory = outputFile.parent;
         }
 
         let rv = await fp.show();
         if (rv == fp.returnOK || rv == fp.returnReplace) {
-            outputFile = Zotero.File.pathToFile(fp.file);
+            outputFile = fp.file;
             _updatePath();
         }
     };
@@ -203,15 +267,19 @@ var Zotero_ODFScan = new function() {
    */
     function _updatePath() {
         document.documentElement.canAdvance = inputFile && outputFile;
-        if (inputFile && inputFile.path) {
-            document.getElementById("input-path").value = inputFile.path;
+        if (inputFile) {
+            // inputFile is now a string path (from FilePicker in Zotero 7+)
+            let inputPath = typeof inputFile === 'string' ? inputFile : inputFile.path;
+            document.getElementById("input-path").value = inputPath;
             document.getElementById("choose-output-file").disabled = false;
         } else {
             document.getElementById("input-path").value = _getString("ODFScan.file.noneSelected.label");
             document.getElementById("choose-output-file").disabled = true;
         }
         if (outputFile) {
-            document.getElementById("output-path").value = outputFile.path;
+            // outputFile is now a string path (from FilePicker in Zotero 7+)
+            let outputPath = typeof outputFile === 'string' ? outputFile : outputFile.path;
+            document.getElementById("output-path").value = outputPath;
         } else {
             document.getElementById("output-path").value = _getString("ODFScan.file.noneSelected.label");
         }
@@ -228,7 +296,7 @@ var Zotero_ODFScan = new function() {
         let inputPath = Zotero.Prefs.get("ODFScan."+fileType+".lastInputFile" + outputMode);
         if (inputPath) {
             document.getElementById("input-path").value = inputPath;
-            inputFile = Zotero.File.pathToFile(inputPath);
+            inputFile = inputPath; // Store path directly
         } else {
             inputFile = null;
             document.getElementById("input-path").value = _getString("ODFScan.file.noneSelected.label");
@@ -727,30 +795,28 @@ var Zotero_ODFScan = new function() {
             // Scrub any meta string lying around
             this.meta = false;
 
-            // grab a toolkit for file path manipulation
-            Components.utils.import("resource://gre/modules/FileUtils.jsm");
-            Components.utils.import("resource://gre/modules/NetUtil.jsm");
+            // Get the input file path
+            let filePath = typeof inputFile === 'string' ? inputFile : inputFile.path;
+            let fileObj = Zotero.File.pathToFile(filePath);
 
-            // grab the content.xml and meta.xml out of the input file
-            let zipReader = _getReader();
-            this.content = _getEntryContent("content.xml");
-            if (zipReader.hasEntry("meta.xml")) {
-                this.meta = _getEntryContent("meta.xml");
+            // Use nsIZipReader (still available in Zotero 7/8)
+            let zipReader = Components.classes["@mozilla.org/libjar/zip-reader;1"]
+                .createInstance(Components.interfaces.nsIZipReader);
+            zipReader.open(fileObj);
+
+            try {
+                // Read content.xml
+                let contentStream = zipReader.getInputStream("content.xml");
+                this.content = Zotero.File.getContents(contentStream);
+
+                // Read meta.xml if it exists
+                if (zipReader.hasEntry("meta.xml")) {
+                    let metaStream = zipReader.getInputStream("meta.xml");
+                    this.meta = Zotero.File.getContents(metaStream);
+                }
+            } finally {
+                zipReader.close();
             }
-            zipReader.close();
-
-            function _getEntryContent(fileName) {
-                let inputStream = zipReader.getInputStream(fileName);
-                return Zotero.File.getContents(inputStream);
-            }
-
-            function _getReader () {
-                let zipReader = Components.classes["@mozilla.org/libjar/zip-reader;1"]
-                    .createInstance(Components.interfaces.nsIZipReader);
-                zipReader.open(inputFile);
-                return zipReader;
-            }
-
         };
 
 
@@ -763,53 +829,70 @@ var Zotero_ODFScan = new function() {
 
 
         ODFConv.prototype.writeZipfileContent = function () {
+            // Get file paths
+            let inputPath = typeof inputFile === 'string' ? inputFile : inputFile.path;
+            let outputPath = typeof outputFile === 'string' ? outputFile : outputFile.path;
 
-            // Remove target file it already exists
-            if (outputFile.exists()) {
-                outputFile.remove(false);
+            let inputFileObj = Zotero.File.pathToFile(inputPath);
+            let outputFileObj = Zotero.File.pathToFile(outputPath);
+
+            // Remove target file if it already exists
+            if (outputFileObj.exists()) {
+                outputFileObj.remove(false);
             }
 
             // Copy input file to the new location
-            inputFile.copyTo(outputFile.parent,outputFile.leafName);
+            inputFileObj.copyTo(outputFileObj.parent, outputFileObj.leafName);
 
-            // get zip writer
-            const zipWriter = _getWriter();
+            // Open the copied file as a ZIP for writing (nsIZipWriter still works in Zotero 7/8)
+            let zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
+                .createInstance(Components.interfaces.nsIZipWriter);
+            zipWriter.open(outputFileObj, 0x04); // PR_RDWR
 
-            // Remove context.xml and meta.xml
-            zipWriter.removeEntry("content.xml", false);
-            if (this.meta) {
-                zipWriter.removeEntry("meta.xml", false);
+            try {
+                // Remove old entries
+                zipWriter.removeEntry("content.xml", false);
+                if (this.meta) {
+                    zipWriter.removeEntry("meta.xml", false);
+                }
+
+                // Add our modified content
+                // Write to temporary files and add to ZIP (Zotero 7+ compatible)
+                let tempDir = Zotero.getTempDirectory();
+
+                // Write content.xml to temp file
+                let tempContentFile = tempDir.clone();
+                tempContentFile.append("odf-scan-content.xml");
+                Zotero.File.putContents(tempContentFile, this.content);
+                zipWriter.addEntryFile("content.xml", 9, tempContentFile, false);
+
+                // Write meta.xml to temp file if it exists
+                if (this.meta) {
+                    let tempMetaFile = tempDir.clone();
+                    tempMetaFile.append("odf-scan-meta.xml");
+                    Zotero.File.putContents(tempMetaFile, this.meta);
+                    zipWriter.addEntryFile("meta.xml", 9, tempMetaFile, false);
+                }
+
+                // Clean up temp files
+                if (tempContentFile.exists()) {
+                    tempContentFile.remove(false);
+                }
+                if (this.meta) {
+                    let tempMetaFile = tempDir.clone();
+                    tempMetaFile.append("odf-scan-meta.xml");
+                    if (tempMetaFile.exists()) {
+                        tempMetaFile.remove(false);
+                    }
+                }
+            } finally {
+                zipWriter.close();
             }
-
-            // Add our own context.xml and meta.xml
-            _addToZipFile("content.xml",this.content);
-            if (this.meta) {
-                _addToZipFile("meta.xml",this.meta);
-            }
-            zipWriter.close();
-
-            function _getWriter() {
-                let zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
-                    .createInstance(Components.interfaces.nsIZipWriter);
-                // 0x02 = Read and Write
-                zipWriter.open(outputFile, 0x04 );
-                return zipWriter;
-            }
-
-            function _addToZipFile(fileName, data) {
-                let converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"].
-                    createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
-                converter.charset = "UTF-8";
-                let istream = converter.convertToInputStream(data);
-                zipWriter.addEntryStream(fileName, 0, 9, istream, false);
-            }
-
         };
 
         ODFConv.prototype.purgeStyles = function () {
 
-            let decodeXML = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-                .createInstance(Components.interfaces.nsIDOMParser);
+            let decodeXML = new DOMParser();
             let encodeXML = new XMLSerializer();
 
             let doc = decodeXML.parseFromString(this.content,"application/xml");
@@ -1268,4 +1351,16 @@ var Zotero_ODFScan = new function() {
         document.documentElement.canAdvance = true;
         document.documentElement.advance();
     }
+
+    // Expose _scanODF function for use by the simplified ODF Scan dialog
+    this.runODFScan = function(outputMode) {
+        // Read from global variables set by the calling dialog
+        if (typeof window.inputFile !== 'undefined') {
+            inputFile = window.inputFile;
+        }
+        if (typeof window.outputFile !== 'undefined') {
+            outputFile = window.outputFile;
+        }
+        return _scanODF(outputMode);
+    };
 };

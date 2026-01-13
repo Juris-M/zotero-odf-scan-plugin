@@ -1,0 +1,73 @@
+<?xml version="1.0" ?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero.css"?>
+<?xml-stylesheet href="odfScan.css" type="text/css"?>
+
+<window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+	xmlns:html="http://www.w3.org/1999/xhtml"
+	width="700" height="650"
+	minwidth="600" minheight="500"
+	onload="Zotero_ODFScanDialog.init()"
+	title="ODF Scan">
+
+<linkset>
+	<html:link rel="localization" href="odf-scan.ftl"/>
+</linkset>
+
+<!-- Include Zotero's core scripts to make Zotero object available -->
+<script>
+	Services.scriptloader.loadSubScript("chrome://zotero/content/include.js", this);
+	Services.scriptloader.loadSubScript("chrome://zotero/content/customElements.js", this);
+</script>
+<script src="odfScan.js"/>
+
+<vbox flex="1" style="padding: 16px;">
+	<groupbox>
+		<caption label="Conversion Method"/>
+		<radiogroup id="file-type-selector" orient="horizontal">
+			<radio id="file-type-selector-odf-tocitations" label="ODF (to citations)" value="odf-tocitations" selected="true"/>
+			<radio id="file-type-selector-odf-tomarkers" label="ODF (to markers)" value="odf-tomarkers"/>
+		</radiogroup>
+	</groupbox>
+
+	<vbox class="file-type-description" style="margin-bottom: 16px;">
+		<description>This plugin can convert citation markers in the drag-and-drop Scannable Cite format to active Zotero citations. Citation markers can be edited after creation to add prefix, suffix and pinpoint details, as illustrated below. For further details, see the <label class="zotero-text-link" href="https://zotero-odf-scan.github.io/zotero-odf-scan/" value="project website" style="margin-left: 0; margin-right: 0;"/>.</description>
+		<label style="color:black;margin:0 0 0.25em 2em;" value="{ *See* | Smith, A Title (2003) | | | zotero://select/items/0_AXVB9R }"/>
+		<label style="margin:0 0 0.75em 4em;font-style:italic;" value="↳ Explanatory prefix in first field, readable cite in second field."/>
+		<label style="color:black;margin:0 0 0.25em 2em;" value="{ | Smith, A Title (2003) | p. 33 | (quoting Jones) | zotero://select/items/0_AXVB9R }"/>
+		<label style="margin:0 0 0.75em 4em;font-style:italic;" value="↳ Page pinpoint in third field, explanatory suffix in fourth field."/>
+		<label style="color:black;margin:0 0 0.25em 2em;" value="{ | -Smith, A Title (2003) | | | zotero://select/items/0_AXVB9R }"/>
+		<label style="margin:0 0 0 4em;font-style:italic;" value="↳ Minus sign at start of readable cite field suppresses author."/>
+		<description style="padding-top:1em">To get started, select an ODF input file and an output file below:</description>
+	</vbox>
+
+	<vbox style="margin-bottom: 16px;">
+		<label value="Input File" style="font-weight: 600; margin-bottom: 4px;"/>
+		<hbox align="center">
+			<html:input native="true" type="text" id="input-path" readonly="true" value="No file selected" style="flex: 1; margin-right: 8px;"/>
+			<button id="choose-input-file" label="Choose File…"/>
+		</hbox>
+	</vbox>
+
+	<vbox style="margin-bottom: 16px;">
+		<label value="Output File" style="font-weight: 600; margin-bottom: 4px;"/>
+		<hbox align="center">
+			<html:input native="true" type="text" id="output-path" readonly="true" value="No file selected" style="flex: 1; margin-right: 8px;"/>
+			<button id="choose-output-file" label="Choose File…"/>
+		</hbox>
+	</vbox>
+
+	<vbox id="status-box" style="margin-top: 16px; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background-color: #f9f9f9; max-height: 150px; overflow: auto;" hidden="true">
+		<label id="status-message" style="font-weight: bold;"/>
+		<description id="status-details" style="margin-top: 4px; white-space: pre-wrap; word-wrap: break-word;"/>
+	</vbox>
+
+	<spacer flex="1"/>
+
+	<hbox style="margin-top: 16px; justify-content: flex-end;">
+		<button id="process-button" label="Process Document" disabled="true"/>
+		<button id="close-button" label="Close" oncommand="window.close();"/>
+	</hbox>
+</vbox>
+
+</window>

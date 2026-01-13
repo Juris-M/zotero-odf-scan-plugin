@@ -1,2 +1,5 @@
 *.xpi
+*.zip
 node_modules
+*.odt
+.~lock.*

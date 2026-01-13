@@ -6,9 +6,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "build": "./build.py",
-    "postversion": "./build.py --release",
-    "release": "./release.sh",
+    "build": "bash build.sh",
+    "release": "bash release.sh",
     "test": "eslint --fix bootstrap.js chrome/content/*.js 'resource/translators/Scannable Cite.js'"
   },
   "repository": {
