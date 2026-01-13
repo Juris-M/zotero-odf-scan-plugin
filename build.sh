@@ -23,7 +23,6 @@ echo "Staging files..."
 # Copy files to temp directory
 cp -r chrome "$TEMP_DIR/"
 cp -r resource "$TEMP_DIR/"
-cp chrome.manifest "$TEMP_DIR/"
 cp bootstrap.js "$TEMP_DIR/"
 cp manifest.json "$TEMP_DIR/"
 

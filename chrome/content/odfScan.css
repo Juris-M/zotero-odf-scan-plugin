@@ -1,0 +1,55 @@
+/* ODF Scan Dialog Styles for Zotero 7 */
+
+/* Window styling */
+window {
+    padding: 0;
+}
+
+/* File type description */
+.file-type-description {
+    padding: 12px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+/* Link styling */
+label.zotero-text-link {
+    color: #0060df;
+    cursor: pointer;
+}
+
+label.zotero-text-link:hover {
+    text-decoration: underline;
+}
+
+/* Groupbox styling */
+groupbox {
+    margin-bottom: 12px;
+    padding: 8px;
+}
+
+groupbox caption {
+    font-weight: 600;
+    color: #0c0c0d;
+}
+
+/* Input field styling */
+html|input[readonly] {
+    background-color: #f9f9fa;
+    color: #0c0c0d;
+    border: 1px solid #b1b1b3;
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* Button styling */
+button {
+    padding: 6px 16px;
+    min-width: 100px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

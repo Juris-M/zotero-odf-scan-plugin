@@ -13,6 +13,7 @@ var PREFS = {
 };
 
 var ODFScan = null;
+var chromeHandle = null;
 
 function log(msg) {
     Zotero.debug("ODF Scan: " + msg);
@@ -88,10 +89,25 @@ async function install({ id, version, rootURI }) {
 async function startup({ id, version, rootURI }) {
     log("Starting ODF Scan plugin version " + version);
 
+    // Register chrome:// protocol handler for our content
+    // This allows us to use chrome://odf-scan/ URLs
+    try {
+        let aomStartup = Components.classes["@mozilla.org/addons/addon-manager-startup;1"]
+            .getService(Components.interfaces.amIAddonManagerStartup);
+        let manifestURI = Services.io.newURI(rootURI + "manifest.json");
+        chromeHandle = aomStartup.registerChrome(manifestURI, [
+            ["content", "odf-scan", rootURI + "chrome/content/"],
+            ["locale", "odf-scan", "en-US", rootURI + "chrome/locale/en-US/"]
+        ]);
+        log("Chrome package registered successfully");
+    } catch (e) {
+        log("Failed to register chrome package: " + e);
+    }
+
     setDefaultPrefs();
 
-    // Load main plugin code
-    Services.scriptloader.loadSubScript(rootURI + "chrome/content/odfScan.js");
+    // Load main plugin code (menu integration)
+    Services.scriptloader.loadSubScript(rootURI + "chrome/content/odfScanMenu.js");
 
     // Initialize plugin object
     if (typeof Zotero_ODFScan !== 'undefined') {
@@ -119,6 +135,13 @@ function shutdown() {
     if (ODFScan) {
         ODFScan.removeFromAllWindows();
         ODFScan = null;
+    }
+
+    // Unregister chrome package
+    if (chromeHandle) {
+        chromeHandle.destruct();
+        chromeHandle = null;
+        log("Chrome package unregistered");
     }
 }
 

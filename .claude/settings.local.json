@@ -6,7 +6,8 @@
       "Bash(git commit:*)",
       "Bash(python build.py:*)",
       "Bash(unzip:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(curl:*)"
     ]
   }
 }
