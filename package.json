@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/Juris-M/zotero-odf-scan-plugin#readme",
   "devDependencies": {
-    "eslint": "^5.9.0",
+    "eslint": "^9.39.2",
     "eslint-plugin-local": "^1.0.0"
   }
 }
