@@ -1,6 +1,6 @@
-RTF/ODF Scan for Zotero is Copyright © 2013
+RTF/ODF Scan for Zotero is Copyright © 2013-2026
 Frank G. Bennett, Jr., Faculty of Law, Nagoya University
-Nagoya, Japan  http://twitter.com/#!/fgbjr
+and Sebastian Karcher https://orcid.org/0000-0001-8249-7388
 
 The author distributes the source code under the GNU Affero 
 General Public License, version 3 (AGPLv3). The full text of this 

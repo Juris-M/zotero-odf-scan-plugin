@@ -61,9 +61,10 @@ fi
 
 # Update version in files
 echo ""
-echo "Step 1: Updating version in package.json and manifest.json..."
+echo "Step 1: Updating version in package.json, manifest.json, and CITATION.cff..."
 sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" package.json
 sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" manifest.json
+sed -i "s/^version: .*/version: $VERSION/" CITATION.cff
 
 # Update updates.json
 echo "Step 2: Updating updates.json..."
@@ -127,7 +128,7 @@ fi
 # Commit version changes
 echo ""
 echo "Step 5: Committing version updates..."
-git add package.json manifest.json updates.json
+git add package.json manifest.json updates.json CITATION.cff
 git commit -m "Release v$VERSION"
 
 # Create and push tag
