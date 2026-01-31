@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "ODF/DOCX Scan for Zotero"
 type: software
-version: 2.1.0
+version: 3.0.0
 license: AGPL-3.0
 url: "https://github.com/Juris-M/zotero-odf-scan-plugin"
 repository-code: "https://github.com/Juris-M/zotero-odf-scan-plugin"
