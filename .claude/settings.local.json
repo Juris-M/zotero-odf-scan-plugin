@@ -7,7 +7,12 @@
       "Bash(python build.py:*)",
       "Bash(unzip:*)",
       "Bash(chmod:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(bash build.sh:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp___introfini_mcp-server-zotero-dev__zotero_plugin_list",
+      "mcp___introfini_mcp-server-zotero-dev__zotero_ping",
+      "Bash(npm test)"
     ]
   }
 }
