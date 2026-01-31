@@ -86,7 +86,9 @@ var Zotero_ODFScanDialog = {
         try {
             const fp = new FilePicker();
             fp.init(window, "Select input file", fp.modeOpen);
+            fp.appendFilter("Supported Documents", "*.odt;*.fodt;*.docx");
             fp.appendFilter("ODF Documents", "*.odt;*.fodt");
+            fp.appendFilter("DOCX Documents", "*.docx");
             fp.appendFilters(fp.filterAll);
 
             const rv = await fp.show();
@@ -112,16 +114,17 @@ var Zotero_ODFScanDialog = {
         try {
             const fp = new FilePicker();
             fp.init(window, "Select output file", fp.modeSave);
+            fp.appendFilter("Supported Documents", "*.odt;*.fodt;*.docx");
             fp.appendFilter("ODF Documents", "*.odt;*.fodt");
+            fp.appendFilter("DOCX Documents", "*.docx");
 
             // Suggest a default name based on input file
             if (this.inputFile) {
                 let leafName = this.inputFile.leafName;
                 let dotIndex = leafName.lastIndexOf(".");
-                if (dotIndex !== -1) {
-                    leafName = leafName.substr(0, dotIndex);
-                }
-                fp.defaultString = leafName + " (converted).odt";
+                let extension = dotIndex !== -1 ? leafName.substr(dotIndex) : ".odt";
+                let baseName = dotIndex !== -1 ? leafName.substr(0, dotIndex) : leafName;
+                fp.defaultString = baseName + " (converted)" + extension;
             } else {
                 fp.defaultString = "Untitled.odt";
             }
@@ -157,7 +160,7 @@ var Zotero_ODFScanDialog = {
         this.hideStatus();
     },
 
-    processDocument() {
+    async processDocument() {
         Zotero.debug("ODF Scan: Starting document processing");
 
         try {
@@ -167,29 +170,158 @@ var Zotero_ODFScanDialog = {
             let processButton = document.getElementById('process-button');
             processButton.disabled = true;
 
-            // Get the conversion mode
-            let selectedRadio = document.getElementById('file-type-selector-odf-tocitations').selected ?
-                'odf-tocitations' : 'odf-tomarkers';
+            // Get conversion direction and detect file type
+            let outputMode = this.getConversionDirection();
+            let fileType = this.getFileType();
+            Zotero.debug(`ODF Scan: File type: ${fileType}, direction: ${outputMode}`);
 
-            Zotero.debug(`ODF Scan: Conversion mode: ${selectedRadio}`);
-
-            // Determine if we're doing reverse conversion (to markers)
-            let outputMode = selectedRadio === 'odf-tomarkers' ? 'tomarkers' : 'tocitations';
-
-            // Set up globals that the conversion code expects BEFORE loading scripts
+            // Set up globals that the conversion code expects
             window.inputFile = this.inputFile.path;
             window.outputFile = this.outputFile.path;
 
-            // Load the ODF conversion module which contains the extracted conversion logic
+            // Reset completion flags
+            window.DOCXScanComplete = false;
+            window.DOCXScanFailed = false;
+            this.conversionComplete = false;
+            this.conversionFailed = false;
+
+            // Route to appropriate converter
+            if (fileType === 'docx') {
+                await this.processDOCX(outputMode);
+            } else {
+                await this.processODF(outputMode);
+            }
+
+        } catch (e) {
+            Zotero.debug("ODF Scan: Error during processing: " + e);
+            this.showError("Error processing document: " + e);
+            let processButton = document.getElementById('process-button');
+            processButton.disabled = false;
+        }
+    },
+
+    getConversionDirection() {
+        const radioGroup = document.getElementById('conversion-direction');
+        const selectedRadio = radioGroup.selectedItem;
+        return selectedRadio ? selectedRadio.value : 'tocitations';
+    },
+
+    getFileType() {
+        // Detect file type from input file extension
+        if (!this.inputFile) return 'odf';
+        const fileName = this.inputFile.leafName.toLowerCase();
+        if (fileName.endsWith('.docx')) {
+            return 'docx';
+        }
+        return 'odf'; // Default to ODF for .odt, .fodt, etc.
+    },
+
+    async processDOCX(outputMode) {
+        try {
+            // Load the DOCX conversion module
+            if (typeof window.DOCXScanConvert === 'undefined') {
+                Services.scriptloader.loadSubScript("chrome://odf-scan/content/docxScan.js", window);
+            }
+
+            Zotero.debug(`ODF Scan: Starting DOCX conversion (${outputMode})`);
+            await window.DOCXScanConvert.scanDOCX(outputMode);
+
+            // Check completion status
+            if (window.DOCXScanComplete) {
+                this.showStatus("Success!",
+                    `Document processed successfully.\nOutput saved to: ${window.outputFile}`,
+                    true);
+            } else if (window.DOCXScanFailed) {
+                this.showError("Conversion failed. Please check the debug log for details.");
+            } else {
+                this.showStatus("Processing complete",
+                    `Output saved to: ${window.outputFile}`,
+                    true);
+            }
+
+            let processButton = document.getElementById('process-button');
+            processButton.disabled = false;
+
+        } catch (e) {
+            Zotero.debug("ODF Scan: Error during DOCX conversion: " + e);
+            this.showError("Error processing DOCX document: " + e);
+            let processButton = document.getElementById('process-button');
+            processButton.disabled = false;
+        }
+    },
+
+    async processODF(outputMode) {
+        try {
+            // Load the ODF conversion module
             if (typeof window.ODFScanConvert === 'undefined') {
                 Services.scriptloader.loadSubScript("chrome://odf-scan/content/odfConvert.js", window);
             }
 
-            // Reset completion flags
-            this.conversionComplete = false;
-            this.conversionFailed = false;
+            if (outputMode === 'pandoctocitations') {
+                // Pandoc mode: async pre-processing, then ODF scan
+                try {
+                    await window.ODFScanConvert.pandocToODF();
 
-            // Run conversion asynchronously
+                    // Wait for the ODF scan completion flags
+                    setTimeout(() => {
+                        if (this.conversionComplete) {
+                            this.showStatus("Success!",
+                                `Document processed successfully.\nOutput saved to: ${window.outputFile}`,
+                                true);
+                        } else if (this.conversionFailed) {
+                            this.showError("Conversion failed. Please check the debug log for details.");
+                        } else {
+                            this.showStatus("Processing complete",
+                                `Output saved to: ${window.outputFile}`,
+                                true);
+                        }
+
+                        let processButton = document.getElementById('process-button');
+                        processButton.disabled = false;
+                    }, 200);
+
+                } catch (e) {
+                    Zotero.debug("ODF Scan: Error during pandoc-to-ODF conversion: " + e);
+                    this.showError("Error processing pandoc citations: " + e);
+                    let processButton = document.getElementById('process-button');
+                    processButton.disabled = false;
+                }
+                return;
+            }
+
+            if (outputMode === 'topandoc') {
+                // Two-step: ODF citations → markers → pandoc syntax
+                try {
+                    await window.ODFScanConvert.citationsToPandocODF();
+
+                    // Wait for the ODF scan completion flags (tomarkers step)
+                    setTimeout(() => {
+                        if (this.conversionComplete) {
+                            this.showStatus("Success!",
+                                `Document processed successfully.\nOutput saved to: ${window.outputFile}`,
+                                true);
+                        } else if (this.conversionFailed) {
+                            this.showError("Conversion failed. Please check the debug log for details.");
+                        } else {
+                            this.showStatus("Processing complete",
+                                `Output saved to: ${window.outputFile}`,
+                                true);
+                        }
+
+                        let processButton = document.getElementById('process-button');
+                        processButton.disabled = false;
+                    }, 200);
+
+                } catch (e) {
+                    Zotero.debug("ODF Scan: Error during citations-to-pandoc conversion: " + e);
+                    this.showError("Error converting to pandoc citations: " + e);
+                    let processButton = document.getElementById('process-button');
+                    processButton.disabled = false;
+                }
+                return;
+            }
+
+            // Run conversion asynchronously (ODF conversion is synchronous but uses setTimeout)
             setTimeout(() => {
                 try {
                     window.ODFScanConvert.scanODF(outputMode);
@@ -213,7 +345,7 @@ var Zotero_ODFScanDialog = {
                     }, 200);
 
                 } catch (e) {
-                    Zotero.debug("ODF Scan: Error during conversion: " + e);
+                    Zotero.debug("ODF Scan: Error during ODF conversion: " + e);
                     this.showError("Error processing document: " + e);
                     let processButton = document.getElementById('process-button');
                     processButton.disabled = false;
@@ -221,8 +353,8 @@ var Zotero_ODFScanDialog = {
             }, 100);
 
         } catch (e) {
-            Zotero.debug("ODF Scan: Error during processing: " + e);
-            this.showError("Error processing document: " + e);
+            Zotero.debug("ODF Scan: Error loading ODF converter: " + e);
+            this.showError("Error loading ODF converter: " + e);
             let processButton = document.getElementById('process-button');
             processButton.disabled = false;
         }

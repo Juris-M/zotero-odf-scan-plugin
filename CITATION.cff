@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "ODF/DOCX Scan for Zotero"
+type: software
+version: 2.1.0
+license: AGPL-3.0
+url: "https://github.com/Juris-M/zotero-odf-scan-plugin"
+repository-code: "https://github.com/Juris-M/zotero-odf-scan-plugin"
+authors:
+  - family-names: Bennett
+    given-names: Frank G.
+    suffix: Jr.
+    affiliation: "Faculty of Law, Nagoya University"
+  - family-names: Karcher
+    given-names: Sebastian
+    orcid: "https://orcid.org/0000-0001-8249-7388"

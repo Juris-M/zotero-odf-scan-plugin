@@ -8,7 +8,11 @@
   "scripts": {
     "build": "bash build.sh",
     "release": "bash release.sh",
-    "test": "eslint --fix bootstrap.js chrome/content/*.js 'resource/translators/Scannable Cite.js'"
+    "lint": "eslint --fix bootstrap.js chrome/content/*.js 'resource/translators/Scannable Cite.js'",
+    "test": "node --test test/unit/*.test.js && node --test test/integration/*.test.js",
+    "test:unit": "node --test test/unit/*.test.js",
+    "test:integration": "node --test test/integration/*.test.js",
+    "test:all": "npm run lint && npm test"
   },
   "repository": {
     "type": "git",

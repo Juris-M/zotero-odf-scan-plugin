@@ -5,10 +5,10 @@
 
 <window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
 	xmlns:html="http://www.w3.org/1999/xhtml"
-	width="700" height="650"
-	minwidth="600" minheight="500"
+	width="700" height="720"
+	minwidth="600" minheight="550"
 	onload="Zotero_ODFScanDialog.init()"
-	title="ODF Scan">
+	title="ODF/DOCX Scan">
 
 <linkset>
 	<html:link rel="localization" href="odf-scan.ftl"/>
@@ -23,22 +23,28 @@
 
 <vbox flex="1" style="padding: 16px;">
 	<groupbox>
-		<caption label="Conversion Method"/>
-		<radiogroup id="file-type-selector" orient="horizontal">
-			<radio id="file-type-selector-odf-tocitations" label="ODF (to citations)" value="odf-tocitations" selected="true"/>
-			<radio id="file-type-selector-odf-tomarkers" label="ODF (to markers)" value="odf-tomarkers"/>
+		<caption label="Conversion Direction"/>
+		<radiogroup id="conversion-direction">
+			<hbox style="gap: 16px;">
+				<radio id="direction-tocitations" label="Markers → Zotero citations" value="tocitations" selected="true" style="flex: 1;"/>
+				<radio id="direction-tomarkers" label="Zotero citations → markers" value="tomarkers" style="flex: 1;"/>
+			</hbox>
+			<hbox style="gap: 16px;">
+				<radio id="direction-pandoc" label="Pandoc → Zotero citations" value="pandoctocitations" style="flex: 1;"/>
+				<radio id="direction-topandoc" label="Zotero citations → pandoc" value="topandoc" style="flex: 1;"/>
+			</hbox>
 		</radiogroup>
 	</groupbox>
 
 	<vbox class="file-type-description" style="margin-bottom: 16px;">
-		<description>This plugin can convert citation markers in the drag-and-drop Scannable Cite format to active Zotero citations. Citation markers can be edited after creation to add prefix, suffix and pinpoint details, as illustrated below. For further details, see the <label class="zotero-text-link" href="https://zotero-odf-scan.github.io/zotero-odf-scan/" value="project website" style="margin-left: 0; margin-right: 0;"/>.</description>
-		<label style="color:black;margin:0 0 0.25em 2em;" value="{ *See* | Smith, A Title (2003) | | | zotero://select/items/0_AXVB9R }"/>
-		<label style="margin:0 0 0.75em 4em;font-style:italic;" value="↳ Explanatory prefix in first field, readable cite in second field."/>
-		<label style="color:black;margin:0 0 0.25em 2em;" value="{ | Smith, A Title (2003) | p. 33 | (quoting Jones) | zotero://select/items/0_AXVB9R }"/>
-		<label style="margin:0 0 0.75em 4em;font-style:italic;" value="↳ Page pinpoint in third field, explanatory suffix in fourth field."/>
-		<label style="color:black;margin:0 0 0.25em 2em;" value="{ | -Smith, A Title (2003) | | | zotero://select/items/0_AXVB9R }"/>
-		<label style="margin:0 0 0 4em;font-style:italic;" value="↳ Minus sign at start of readable cite field suppresses author."/>
-		<description style="padding-top:1em">To get started, select an ODF input file and an output file below:</description>
+		<description>Converts between citation markers and active Zotero citations. Supports both Scannable Cite and pandoc syntax. See the <label class="zotero-text-link" href="https://zotero-odf-scan.github.io/zotero-odf-scan/" value="project website" style="margin-left: 0; margin-right: 0;"/> for details.</description>
+		<label style="font-weight:bold;margin:0.5em 0 0.25em 0;" value="Scannable Cite format:"/>
+		<label style="color:black;margin:0 0 0.25em 2em;" value="{See | Smith, (2012) |p. 45 | for an example |zu:2433:WQVBH98K}"/>
+		<label style="margin:0 0 0.5em 4em;font-style:italic;" value="↳ Fields: prefix | readable cite | locator | suffix | item URI"/>
+		<label style="font-weight:bold;margin:0.25em 0 0.25em 0;" value="Pandoc citation syntax (uses Zotero Citation Key field):"/>
+		<label style="color:black;margin:0 0 0.25em 2em;" value="[see @smith2003, p. 33; -@jones2005, ch. 2]"/>
+		<label style="margin:0 0 0.5em 4em;font-style:italic;" value="↳ Prefix, citekey, locator; suppress-author with - prefix; semicolons for multi-cite"/>
+		<description style="padding-top:0.5em">Select an input file (ODF or DOCX) and an output file below:</description>
 	</vbox>
 
 	<vbox style="margin-bottom: 16px;">
