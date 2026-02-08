@@ -52,10 +52,14 @@ function doExport() {
         let dateS = (date.year) ? date.year : item.date;
         memdate.set(dateS,"","no date");
         Zotero.write(" " + mem.get() + " " + memdate.get() + " | | |");
+        let m = item.uri.match(/http:\/\/zotero\.org\/(users|groups)\/([^\/]+)\/items\/(.+)/);
         if (Zotero.getHiddenPref("ODFScan.useZoteroSelect")) {
-            Zotero.write("zotero://select/items/" + library_id + "_" + item.key + "}");
+            if (m && m[1] === "groups") {
+                Zotero.write("zotero://select/groups/" + m[2] + "/items/" + item.key + "}");
+            } else {
+                Zotero.write("zotero://select/library/items/" + item.key + "}");
+            }
         } else {
-            let m = item.uri.match(/http:\/\/zotero\.org\/(users|groups)\/([^\/]+)\/items\/(.+)/);
             let prefix;
             let lib;
             if (m) {
