@@ -31,7 +31,6 @@ function doExport() {
         let mem = new Mem(item);
         let memdate = new Mem(item);
         Zotero.write("{ |");
-        let library_id = item.libraryID ? item.libraryID : 0;
         if (item.creators.length >0){
             mem.set(item.creators[0].lastName,",");
             if (item.creators.length > 2) mem.set("et al.", ",");
