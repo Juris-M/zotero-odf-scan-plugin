@@ -1,5 +1,41 @@
 /* ODF Scan Dialog Styles for Zotero 7 */
 
+:root {
+    --odf-description-bg: #f5f5f5;
+    --odf-input-bg: #f9f9fa;
+    --odf-input-border: #b1b1b3;
+    --odf-link-color: #0060df;
+
+    --odf-status-processing-bg: #fff3e0;
+    --odf-status-processing-border: #ff9800;
+    --odf-status-processing-color: #e65100;
+    --odf-status-success-bg: #e8f5e9;
+    --odf-status-success-border: #4caf50;
+    --odf-status-success-color: #2e7d32;
+    --odf-status-error-bg: #ffebee;
+    --odf-status-error-border: #f44336;
+    --odf-status-error-color: #c62828;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --odf-description-bg: #2a2a2e;
+        --odf-input-bg: #1c1b22;
+        --odf-input-border: #52525e;
+        --odf-link-color: #0a84ff;
+
+        --odf-status-processing-bg: #3d2800;
+        --odf-status-processing-border: #b36200;
+        --odf-status-processing-color: #ffa726;
+        --odf-status-success-bg: #003300;
+        --odf-status-success-border: #2e7d32;
+        --odf-status-success-color: #81c784;
+        --odf-status-error-bg: #3c0000;
+        --odf-status-error-border: #c62828;
+        --odf-status-error-color: #ef9a9a;
+    }
+}
+
 /* Window styling */
 window {
     padding: 0;
@@ -8,13 +44,13 @@ window {
 /* File type description */
 .file-type-description {
     padding: 12px;
-    background-color: #f5f5f5;
+    background-color: var(--odf-description-bg);
     border-radius: 4px;
 }
 
 /* Link styling */
 label.zotero-text-link {
-    color: #0060df;
+    color: var(--odf-link-color);
     cursor: pointer;
 }
 
@@ -28,16 +64,11 @@ groupbox {
     padding: 8px;
 }
 
-groupbox caption {
-    font-weight: 600;
-    color: #0c0c0d;
-}
-
 /* Input field styling */
 html|input[readonly] {
-    background-color: #f9f9fa;
-    color: #0c0c0d;
-    border: 1px solid #b1b1b3;
+    background-color: var(--odf-input-bg);
+    color: inherit;
+    border: 1px solid var(--odf-input-border);
     padding: 6px 8px;
     font-family: inherit;
     font-size: inherit;
@@ -52,4 +83,29 @@ button {
 button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Status box states */
+#status-box.status-processing {
+    background-color: var(--odf-status-processing-bg);
+    border-color: var(--odf-status-processing-border);
+}
+#status-box.status-processing #status-message {
+    color: var(--odf-status-processing-color);
+}
+
+#status-box.status-success {
+    background-color: var(--odf-status-success-bg);
+    border-color: var(--odf-status-success-border);
+}
+#status-box.status-success #status-message {
+    color: var(--odf-status-success-color);
+}
+
+#status-box.status-error {
+    background-color: var(--odf-status-error-bg);
+    border-color: var(--odf-status-error-border);
+}
+#status-box.status-error #status-message {
+    color: var(--odf-status-error-color);
 }

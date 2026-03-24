@@ -367,19 +367,10 @@ var Zotero_ODFScanDialog = {
 
         if (statusBox && statusMessage && statusDetails) {
             statusBox.hidden = false;
+            statusBox.classList.remove('status-processing', 'status-success', 'status-error');
+            statusBox.classList.add(isSuccess ? 'status-success' : 'status-processing');
             statusMessage.value = message;
             statusDetails.textContent = details;
-
-            // Style based on success/error
-            if (isSuccess) {
-                statusBox.style.backgroundColor = "#e8f5e9";
-                statusBox.style.borderColor = "#4caf50";
-                statusMessage.style.color = "#2e7d32";
-            } else {
-                statusBox.style.backgroundColor = "#fff3e0";
-                statusBox.style.borderColor = "#ff9800";
-                statusMessage.style.color = "#e65100";
-            }
         }
     },
 
@@ -390,9 +381,8 @@ var Zotero_ODFScanDialog = {
 
         if (statusBox && statusMessage && statusDetails) {
             statusBox.hidden = false;
-            statusBox.style.backgroundColor = "#ffebee";
-            statusBox.style.borderColor = "#f44336";
-            statusMessage.style.color = "#c62828";
+            statusBox.classList.remove('status-processing', 'status-success', 'status-error');
+            statusBox.classList.add('status-error');
             statusMessage.value = "Error";
             statusDetails.textContent = message;
         }
@@ -402,6 +392,7 @@ var Zotero_ODFScanDialog = {
         let statusBox = document.getElementById('status-box');
         if (statusBox) {
             statusBox.hidden = true;
+            statusBox.classList.remove('status-processing', 'status-success', 'status-error');
         }
     }
 };

@@ -10,7 +10,7 @@
             "id": "rtf-odf-scan-for-zotero@mystery-lab.com",
             "update_url": "https://juris-m.github.io/zotero-odf-scan-plugin/updates.json",
             "strict_min_version": "7.0",
-            "strict_max_version": "8.0.*"
+            "strict_max_version": "9.0.*"
         }
     }
 }

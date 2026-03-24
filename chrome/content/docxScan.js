@@ -15,6 +15,8 @@ var DOCXScanConvert = {
     async scanDOCX(outputMode) {
         this.log(`Starting DOCX scan in ${outputMode} mode`);
 
+        const tempFiles = []; // track temp files for cleanup
+
         try {
             // Get file paths from globals
             const inputPath = window.inputFile;
@@ -30,41 +32,48 @@ var DOCXScanConvert = {
             // Extract DOCX to temp directory
             const tempDir = await this.extractDocx(inputPath);
 
-            // Read document.xml
-            const docFile = tempDir.clone();
-            docFile.append("word");
-            docFile.append("document.xml");
-            let content = this.readFileContents(docFile);
+            // Build substitutions map: zip entry path → temp nsIFile with modified content
+            // Keys use forward slashes (DOCX/ZIP convention).
+            const substitutions = new Map();
 
-            this.log("Loaded document.xml, length: " + content.length);
+            // Files to process: document.xml is mandatory; footnotes/endnotes are optional.
+            const xmlParts = [
+                { zipPath: 'word/document.xml',  required: true  },
+                { zipPath: 'word/footnotes.xml',  required: false },
+                { zipPath: 'word/endnotes.xml',   required: false },
+            ];
 
-            // Process content
-            if (outputMode === "tomarkers") {
-                content = await this.citationsToMarkers(content);
-            } else if (outputMode === "topandoc") {
-                content = await this.citationsToPandoc(content);
-            } else if (outputMode === "pandoctocitations") {
-                // Two-step: pandoc → scannable cite markers → Zotero citations
-                content = await this.pandocToMarkers(content);
-                content = await this.markersToCitations(content);
-            } else {
-                content = await this.markersToCitations(content);
+            for (const part of xmlParts) {
+                const srcFile = tempDir.clone();
+                for (const seg of part.zipPath.split('/')) srcFile.append(seg);
+
+                if (!srcFile.exists()) {
+                    if (part.required) throw new Error(`Required file not found: ${part.zipPath}`);
+                    continue;
+                }
+
+                let content = this.readFileContents(srcFile);
+                this.log(`Loaded ${part.zipPath}, length: ${content.length}`);
+
+                content = await this.processContent(content, outputMode);
+
+                // Write to a uniquely-named temp file
+                const tempName = 'docx-scan-' + part.zipPath.replace(/\//g, '-');
+                const tempFile = Zotero.getTempDirectory();
+                tempFile.append(tempName);
+                Zotero.File.putContents(tempFile, content);
+                tempFiles.push(tempFile);
+
+                substitutions.set(part.zipPath, tempFile);
             }
 
-            // Write modified content to a separate temp file (avoid lock on extracted file)
-            const modifiedDocFile = Zotero.getTempDirectory();
-            modifiedDocFile.append("docx-scan-document.xml");
-            Zotero.File.putContents(modifiedDocFile, content);
+            // Repackage DOCX, substituting all modified files
+            await this.packageDocx(tempDir, outputPath, substitutions);
 
-            // Repackage DOCX, substituting the modified document.xml
-            await this.packageDocx(tempDir, outputPath, modifiedDocFile);
-
-            // Clean up the modified file
-            if (modifiedDocFile.exists()) {
-                modifiedDocFile.remove(false);
+            // Clean up temp files and extracted directory
+            for (const f of tempFiles) {
+                try { if (f.exists()) f.remove(false); } catch(e) {}
             }
-
-            // Clean up temp directory
             await this.cleanupTempDir(tempDir);
 
             this.log("DOCX scan completed successfully");
@@ -74,8 +83,29 @@ var DOCXScanConvert = {
         } catch (e) {
             this.log("Error during DOCX scan: " + e);
             this.log(e.stack);
+            for (const f of tempFiles) {
+                try { if (f.exists()) f.remove(false); } catch(e2) {}
+            }
             window.DOCXScanFailed = true;
             throw e;
+        }
+    },
+
+    /**
+     * Route content through the appropriate conversion for outputMode.
+     * Shared by document.xml, footnotes.xml, and endnotes.xml.
+     */
+    async processContent(content, outputMode) {
+        if (outputMode === "tomarkers") {
+            return await this.citationsToMarkers(content);
+        } else if (outputMode === "topandoc") {
+            return await this.citationsToPandoc(content);
+        } else if (outputMode === "pandoctocitations") {
+            // Two-step: pandoc → scannable cite markers → Zotero citations
+            content = await this.pandocToMarkers(content);
+            return await this.markersToCitations(content);
+        } else {
+            return await this.markersToCitations(content);
         }
     },
 
@@ -169,23 +199,42 @@ var DOCXScanConvert = {
      * Package directory back into DOCX (ZIP)
      * @param {nsIFile} sourceDir - The extracted DOCX directory
      * @param {string} outputPath - Path for the output DOCX file
-     * @param {nsIFile} modifiedDocFile - The modified document.xml to substitute
+     * @param {Map<string, nsIFile>} substitutions - Map of zip entry path → replacement nsIFile
      */
-    async packageDocx(sourceDir, outputPath, modifiedDocFile) {
+    async packageDocx(sourceDir, outputPath, substitutions) {
         this.log("Packaging DOCX to: " + outputPath);
 
         const outputFile = Zotero.File.pathToFile(outputPath);
-        if (outputFile.exists()) {
-            outputFile.remove(false);
+        try {
+            if (outputFile.exists()) {
+                outputFile.remove(false);
+            }
+        } catch (e) {
+            if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
+                throw new Error(
+                    `The output file is locked or open in another application. ` +
+                    `Please close "${outputFile.leafName}" and try again.`
+                );
+            }
+            throw e;
         }
 
         const zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
             .createInstance(Components.interfaces.nsIZipWriter);
-        zipWriter.open(outputFile, 0x04 | 0x08 | 0x20);
+        try {
+            zipWriter.open(outputFile, 0x04 | 0x08 | 0x20);
+        } catch (e) {
+            if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
+                throw new Error(
+                    `The output file is locked or open in another application. ` +
+                    `Please close "${outputFile.leafName}" and try again.`
+                );
+            }
+            throw e;
+        }
 
         try {
-            // Add all files from source directory, substituting document.xml
-            await this.addDirectoryToZip(zipWriter, sourceDir, null, modifiedDocFile);
+            await this.addDirectoryToZip(zipWriter, sourceDir, null, substitutions);
             zipWriter.close();
         } catch (e) {
             this.log("Error packaging DOCX: " + e);
@@ -195,9 +244,9 @@ var DOCXScanConvert = {
 
     /**
      * Recursively add directory contents to ZIP
-     * @param {nsIFile} modifiedDocFile - If provided, substitute this for word/document.xml
+     * @param {Map<string, nsIFile>} substitutions - zip entry paths to replace with modified files
      */
-    async addDirectoryToZip(zipWriter, baseDir, relativePath, modifiedDocFile) {
+    async addDirectoryToZip(zipWriter, baseDir, relativePath, substitutions) {
         const currentDir = relativePath ? baseDir.clone() : baseDir;
 
         if (relativePath) {
@@ -216,15 +265,15 @@ var DOCXScanConvert = {
 
             if (entry.isDirectory()) {
                 // Recursively add subdirectory
-                await this.addDirectoryToZip(zipWriter, baseDir, entryRelPath, modifiedDocFile);
+                await this.addDirectoryToZip(zipWriter, baseDir, entryRelPath, substitutions);
             } else {
                 // Add file - use forward slashes in ZIP entries (DOCX standard)
                 const zipPath = entryRelPath.replace(/\\/g, '/');
 
-                // Substitute modified document.xml if this is word/document.xml
-                if (zipPath === 'word/document.xml' && modifiedDocFile) {
-                    this.log("Substituting modified document.xml");
-                    zipWriter.addEntryFile(zipPath, 9, modifiedDocFile, false);
+                const substitute = substitutions && substitutions.get(zipPath);
+                if (substitute) {
+                    this.log(`Substituting modified ${zipPath}`);
+                    zipWriter.addEntryFile(zipPath, 9, substitute, false);
                 } else {
                     zipWriter.addEntryFile(zipPath, 9, entry, false);
                 }
@@ -265,15 +314,15 @@ var DOCXScanConvert = {
 
             this.log(`Found marker: ${cite} | ${uri}`);
 
-            // Look up item in Zotero
+            // Look up item in Zotero; fall back to URI-only if not found in current library
             const item = await this.getItemByURI(uri.trim());
-            if (!item) {
-                this.log(`Warning: Item not found for URI: ${uri}`);
-                continue;
+            let citationData;
+            if (item) {
+                citationData = await this.buildCitationData(item, cite.trim(), locator.trim(), suppress.trim());
+            } else {
+                this.log(`Warning: Item not found for URI: ${uri}, building field from URI directly`);
+                citationData = this.buildCitationDataFromURI(uri.trim(), cite.trim(), locator.trim(), suppress.trim());
             }
-
-            // Build citation data
-            const citationData = await this.buildCitationData(item, cite.trim(), locator.trim(), suppress.trim());
             citations.push({
                 marker: fullMatch,
                 citationData,
@@ -672,6 +721,32 @@ var DOCXScanConvert = {
         };
 
         return citationData;
+    },
+
+    /**
+     * Build CSL citation data from a URI string alone (no item lookup).
+     * Used as a fallback when the item isn't in the currently loaded library.
+     * The Zotero Word plugin will resolve the item from the URI when it next
+     * processes the document.
+     */
+    buildCitationDataFromURI(uri, cite, locator, suppress) {
+        const citationItem = { uris: [uri] };
+        if (locator) {
+            citationItem.locator = locator;
+            citationItem.label = "page";
+        }
+        if (suppress) {
+            citationItem["suppress-author"] = true;
+        }
+        return {
+            citationID: this.generateCitationID(),
+            properties: {
+                formattedCitation: cite,
+                plainCitation: cite
+            },
+            citationItems: [citationItem],
+            schema: "https://github.com/citation-style-language/schema/raw/master/csl-citation.json"
+        };
     },
 
     /**

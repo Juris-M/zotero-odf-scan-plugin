@@ -83,7 +83,7 @@ cat > updates.json <<EOF
           "applications": {
             "zotero": {
               "strict_min_version": "7.0",
-              "strict_max_version": "8.0.*"
+              "strict_max_version": "9.0.*"
             }
           }
         }

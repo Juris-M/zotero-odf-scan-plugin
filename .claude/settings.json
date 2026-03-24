@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Read(//tmp/categories-docx/extracted/word/**)",
+      "Read(//tmp/categories-converted/word/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\karch\\.claude\\projects\\c--Users-karch-Documents-gits-zotero-odf-scan-plugin"
+    ]
+  }
+}

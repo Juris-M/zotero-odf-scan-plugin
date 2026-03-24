@@ -837,8 +837,18 @@ var Zotero_ODFScan = new function() {
             let outputFileObj = Zotero.File.pathToFile(outputPath);
 
             // Remove target file if it already exists
-            if (outputFileObj.exists()) {
-                outputFileObj.remove(false);
+            try {
+                if (outputFileObj.exists()) {
+                    outputFileObj.remove(false);
+                }
+            } catch (e) {
+                if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
+                    throw new Error(
+                        `The output file is locked or open in another application. ` +
+                        `Please close "${outputFileObj.leafName}" and try again.`
+                    );
+                }
+                throw e;
             }
 
             // Copy input file to the new location
@@ -847,7 +857,17 @@ var Zotero_ODFScan = new function() {
             // Open the copied file as a ZIP for writing (nsIZipWriter still works in Zotero 7/8)
             let zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
                 .createInstance(Components.interfaces.nsIZipWriter);
-            zipWriter.open(outputFileObj, 0x04); // PR_RDWR
+            try {
+                zipWriter.open(outputFileObj, 0x04); // PR_RDWR
+            } catch (e) {
+                if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
+                    throw new Error(
+                        `The output file is locked or open in another application. ` +
+                        `Please close "${outputFileObj.leafName}" and try again.`
+                    );
+                }
+                throw e;
+            }
 
             try {
                 // Remove old entries

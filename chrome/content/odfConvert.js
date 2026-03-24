@@ -112,7 +112,17 @@ var ODFScanConvert = {
             const outputFile = Zotero.File.pathToFile(outputPath);
 
             // Copy input to output
-            if (outputFile.exists()) outputFile.remove(false);
+            try {
+                if (outputFile.exists()) outputFile.remove(false);
+            } catch (e) {
+                if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
+                    throw new Error(
+                        `The output file is locked or open in another application. ` +
+                        `Please close "${outputFile.leafName}" and try again.`
+                    );
+                }
+                throw e;
+            }
             inputFile.copyTo(outputFile.parent, outputFile.leafName);
 
             // Write modified content.xml to temp file
@@ -123,7 +133,17 @@ var ODFScanConvert = {
             // Replace content.xml in the output ZIP
             const zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
                 .createInstance(Components.interfaces.nsIZipWriter);
-            zipWriter.open(outputFile, 0x04); // RDWR
+            try {
+                zipWriter.open(outputFile, 0x04); // RDWR
+            } catch (e) {
+                if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
+                    throw new Error(
+                        `The output file is locked or open in another application. ` +
+                        `Please close "${outputFile.leafName}" and try again.`
+                    );
+                }
+                throw e;
+            }
             try {
                 zipWriter.removeEntry("content.xml", false);
                 zipWriter.addEntryFile("content.xml", 9, tempFile, false);
@@ -228,7 +248,17 @@ var ODFScanConvert = {
 
             const zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
                 .createInstance(Components.interfaces.nsIZipWriter);
-            zipWriter.open(outputFile, 0x04); // RDWR
+            try {
+                zipWriter.open(outputFile, 0x04); // RDWR
+            } catch (e) {
+                if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
+                    throw new Error(
+                        `The output file is locked or open in another application. ` +
+                        `Please close "${outputFile.leafName}" and try again.`
+                    );
+                }
+                throw e;
+            }
             try {
                 zipWriter.removeEntry("content.xml", false);
                 zipWriter.addEntryFile("content.xml", 9, tempFile, false);

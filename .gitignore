@@ -4,3 +4,5 @@ node_modules
 *.odt
 .~lock.*
 .claude/settings.local.json
+*.docx
+
