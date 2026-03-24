@@ -66,7 +66,7 @@ sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" package.json
 sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" manifest.json
 sed -i "s/^version: .*/version: $VERSION/" CITATION.cff
 
-# Update updates.json
+# Update updates.json (root copy and docs/ copy served via GitHub Pages)
 echo "Step 2: Updating updates.json..."
 XPI_FILE="zotero-odf-scan-v${VERSION}.xpi"
 UPDATE_URL="https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v${VERSION}/${XPI_FILE}"
@@ -125,10 +125,13 @@ if [ "$HASH" != "(hash not calculated)" ]; then
     sed -i "s|\"applications\"|\"update_hash\": \"sha256:$HASH\",\n          \"applications\"|" updates.json
 fi
 
+# Sync docs/updates.json (served via GitHub Pages at the update_url)
+cp updates.json docs/updates.json
+
 # Commit version changes
 echo ""
 echo "Step 5: Committing version updates..."
-git add package.json manifest.json updates.json CITATION.cff
+git add package.json manifest.json updates.json docs/updates.json CITATION.cff
 git commit -m "Release v$VERSION"
 
 # Create and push tag
