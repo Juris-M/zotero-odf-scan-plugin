@@ -5,7 +5,7 @@
         {
           "version": "3.1.1",
           "update_link": "https://github.com/Juris-M/zotero-odf-scan-plugin/releases/download/v3.1.1/zotero-odf-scan-v3.1.1.xpi",
-          "update_hash": "sha256:a913c599810acccaf78ebdb7e71a23437ed458e437a87bcd655e6f076b188d0c",
+          "update_hash": "sha256:e9df96f24a0fd69afcf4f84f3bc1ada6c1219a7938d7912f3404de08e3d79a0d",
           "applications": {
             "zotero": {
               "strict_min_version": "7.0",
