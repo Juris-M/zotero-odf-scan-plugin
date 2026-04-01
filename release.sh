@@ -2,24 +2,51 @@
 set -euo pipefail
 
 # Release script for ODF Scan plugin
-# Usage: ./release.sh <version> [--draft]
+# Usage: ./release.sh <version> [--draft] [--notes-file FILE]
 # Example: ./release.sh 2.1.0
 # Example: ./release.sh 2.1.0 --draft
+# Example: ./release.sh 2.1.0 --notes-file my-notes.md
+#
+# Changelog: by default the script extracts the ## [VERSION] section from
+# CHANGELOG.md (Keep a Changelog format). Use --notes-file to override.
 
 # Check if version argument provided
 if [ -z "${1:-}" ]; then
     echo "Error: Version number required"
-    echo "Usage: ./release.sh <version> [--draft]"
+    echo "Usage: ./release.sh <version> [--draft] [--notes-file FILE]"
     echo "Example: ./release.sh 2.1.0"
     exit 1
 fi
 
 VERSION="$1"
 DRAFT_FLAG=""
+NOTES_FILE=""
 
-# Check for --draft flag
-if [ "${2:-}" = "--draft" ]; then
-    DRAFT_FLAG="--draft"
+# Parse remaining flags
+shift
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --draft)
+            DRAFT_FLAG="--draft"
+            ;;
+        --notes-file)
+            if [ -z "${2:-}" ]; then
+                echo "Error: --notes-file requires a filename argument"
+                exit 1
+            fi
+            NOTES_FILE="$2"
+            shift
+            ;;
+        *)
+            echo "Error: Unknown argument: $1"
+            echo "Usage: ./release.sh <version> [--draft] [--notes-file FILE]"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+if [ -n "$DRAFT_FLAG" ]; then
     echo "Creating draft release..."
 else
     echo "Creating public release..."
@@ -93,7 +120,7 @@ cat > updates.json <<EOF
 }
 EOF
 
-echo "Updated updates.json for Zotero 7/8 compatibility"
+echo "Updated updates.json for Zotero 7-9 compatibility"
 
 # Build the XPI
 echo ""
@@ -151,13 +178,33 @@ else
     echo "  git push origin v$VERSION"
 fi
 
+# Build changelog section for release notes
+# Priority: --notes-file flag > CHANGELOG.md section > fallback message
+if [ -n "$NOTES_FILE" ]; then
+    if [ ! -f "$NOTES_FILE" ]; then
+        echo "Error: Notes file not found: $NOTES_FILE"
+        exit 1
+    fi
+    CHANGELOG_BODY=$(cat "$NOTES_FILE")
+    echo "Using changelog from: $NOTES_FILE"
+elif [ -f "CHANGELOG.md" ]; then
+    # Extract the section for this version: lines between ## [VERSION] and the next ## [
+    CHANGELOG_BODY=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+    if [ -n "$CHANGELOG_BODY" ]; then
+        echo "Extracted changelog from CHANGELOG.md"
+    else
+        echo "Warning: No ## [$VERSION] section found in CHANGELOG.md, using fallback"
+        CHANGELOG_BODY="See the commit history for detailed changes."
+    fi
+else
+    CHANGELOG_BODY="See the commit history for detailed changes."
+fi
+
 # Create GitHub release
 echo ""
 echo "Step 7: Creating GitHub release..."
 
-RELEASE_NOTES="Release v$VERSION for Zotero 7/8
-
-## Installation
+RELEASE_NOTES="## Installation
 
 1. Download the XPI file below
 2. In Zotero: Tools → Add-ons
@@ -166,7 +213,7 @@ RELEASE_NOTES="Release v$VERSION for Zotero 7/8
 
 ## Changes
 
-See the commit history for detailed changes.
+${CHANGELOG_BODY}
 
 ## Verification
 

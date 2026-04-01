@@ -3,7 +3,7 @@
     "name": "ODF Scan for Zotero",
     "version": "3.1.0",
     "description": "Adds convertible citation marker support to Zotero.",
-    "author": "Frank Bennett",
+    "author": "Sebastian Karcher and Frank Bennett",
     "homepage_url": "https://github.com/Juris-M/zotero-odf-scan-plugin",
     "applications": {
         "zotero": {

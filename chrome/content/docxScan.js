@@ -101,9 +101,7 @@ var DOCXScanConvert = {
         } else if (outputMode === "topandoc") {
             return await this.citationsToPandoc(content);
         } else if (outputMode === "pandoctocitations") {
-            // Two-step: pandoc → scannable cite markers → Zotero citations
-            content = await this.pandocToMarkers(content);
-            return await this.markersToCitations(content);
+            return await this.pandocToCitationsDirect(content);
         } else {
             return await this.markersToCitations(content);
         }
@@ -310,7 +308,7 @@ var DOCXScanConvert = {
 
         // First pass: find all markers and build citations
         while ((match = markerRegex.exec(content)) !== null) {
-            const [fullMatch, prefix, cite, locator, suppress, uri] = match;
+            const [fullMatch, _prefix, cite, locator, suppress, uri] = match;
 
             this.log(`Found marker: ${cite} | ${uri}`);
 
@@ -849,7 +847,7 @@ var DOCXScanConvert = {
                     let firstCreator = '';
                     let title = '';
                     let year = '';
-                    try { firstCreator = item.getField('firstCreator') || ''; } catch(e) {}
+                    try { firstCreator = (item.getField('firstCreator') || '').replace(/[\u2068\u2069]/g, ''); } catch(e) {}
                     try { title = item.getField('title') || ''; } catch(e) {}
                     try { year = item.getField('year') || ''; } catch(e) {
                         try { year = (item.getField('date') || '').match(/\d{4}/)?.[0] || ''; } catch(e2) {}
@@ -925,6 +923,148 @@ var DOCXScanConvert = {
         }
         this.log(`Converted ${convertedCount} pandoc citations to markers`);
         return processedContent;
+    },
+
+    /**
+     * Convert pandoc citation groups directly to Zotero Word fields.
+     * Multi-item groups like [@a; @b] become a single Word field with multiple
+     * citationItems, matching how Zotero represents them natively.
+     */
+    async pandocToCitationsDirect(content) {
+        this.log("Converting pandoc citations directly to Word fields");
+
+        const paraRegex = /(<w:p[ >][\s\S]*?<\/w:p>)/g;
+        let convertedCount = 0;
+        const notFoundKeys = [];
+        // Maps placeholder string → { citationData, formattedCitation }
+        const groupFields = new Map();
+
+        // First pass: find pandoc groups, resolve items, embed unique placeholders
+        const withPlaceholders = await this.replaceAsync(content, paraRegex, async (paraXml) => {
+            const runs = this.extractTextRuns(paraXml);
+            if (runs.length === 0) return paraXml;
+
+            let plainText = '';
+            const charMap = [];
+            for (let ri = 0; ri < runs.length; ri++) {
+                for (let ci = 0; ci < runs[ri].text.length; ci++) {
+                    charMap.push({ runIdx: ri, charIdx: ci });
+                    plainText += runs[ri].text[ci];
+                }
+            }
+
+            const pandocCiteRegex = /\[([^\[\]]*@[^\[\]]*)\]/g;
+            let match;
+            const citations = [];
+
+            while ((match = pandocCiteRegex.exec(plainText)) !== null) {
+                const innerText = match[1];
+                const startIdx = match.index;
+                const endIdx = match.index + match[0].length - 1;
+
+                this.log(`Found pandoc citation group: ${match[0]}`);
+
+                const citeEntries = this.parsePandocCitationGroup(innerText);
+                const citationItems = [];
+                const formattedParts = [];
+
+                for (const entry of citeEntries) {
+                    const item = await this.findItemByCitationKey(entry.citekey);
+                    if (!item) {
+                        this.log(`Warning: Item not found for citationKey: ${entry.citekey}`);
+                        notFoundKeys.push(entry.citekey);
+                        continue;
+                    }
+
+                    const uri = await this.buildItemURI(item);
+                    const citationItem = { uris: [uri] };
+                    if (entry.locator) {
+                        citationItem.locator = entry.locator;
+                        citationItem.label = "page";
+                    }
+                    if (entry.suppressAuthor) {
+                        citationItem["suppress-author"] = true;
+                    }
+                    citationItems.push(citationItem);
+
+                    let firstCreator = '';
+                    let title = '';
+                    let year = '';
+                    try { firstCreator = (item.getField('firstCreator') || '').replace(/[\u2068\u2069]/g, ''); } catch(e) {}
+                    try { title = item.getField('title') || ''; } catch(e) {}
+                    try { year = item.getField('year') || ''; } catch(e) {
+                        try { year = (item.getField('date') || '').match(/\d{4}/)?.[0] || ''; } catch(e2) {}
+                    }
+                    let readable = firstCreator;
+                    if (title) readable += (readable ? ', ' : '') + title;
+                    if (year) readable += ` (${year})`;
+                    formattedParts.push(readable);
+                    convertedCount++;
+                }
+
+                if (citationItems.length === 0) continue;
+
+                const formattedCitation = formattedParts.join('; ');
+                const citationData = {
+                    citationID: this.generateCitationID(),
+                    properties: {
+                        formattedCitation,
+                        plainCitation: formattedCitation
+                    },
+                    citationItems,
+                    schema: "https://github.com/citation-style-language/schema/raw/master/csl-citation.json"
+                };
+
+                const placeholder = `ZOTERO_PANDOC_${this.generateCitationID()}`;
+                groupFields.set(placeholder, { citationData, formattedCitation });
+
+                citations.push({
+                    startIdx, endIdx,
+                    startRun: charMap[startIdx].runIdx,
+                    startChar: charMap[startIdx].charIdx,
+                    endRun: charMap[endIdx].runIdx,
+                    endChar: charMap[endIdx].charIdx,
+                    replacement: placeholder
+                });
+            }
+
+            if (citations.length === 0) return paraXml;
+
+            citations.reverse();
+            for (const cite of citations) {
+                const startRun = cite.startRun;
+                const endRun = cite.endRun;
+
+                if (startRun === endRun) {
+                    const run = runs[startRun];
+                    const before = run.text.substring(0, cite.startChar);
+                    const after = run.text.substring(cite.endChar + 1);
+                    run.text = before + cite.replacement + after;
+                } else {
+                    const beforeText = runs[startRun].text.substring(0, cite.startChar);
+                    const afterText = runs[endRun].text.substring(cite.endChar + 1);
+                    runs[startRun].text = beforeText + cite.replacement + afterText;
+                    for (let i = startRun + 1; i <= endRun; i++) {
+                        runs[i].remove = true;
+                    }
+                }
+            }
+
+            return this.rebuildParagraph(paraXml, runs);
+        });
+
+        // Second pass: replace placeholders with Word fields
+        let result = withPlaceholders;
+        for (const [placeholder, { citationData, formattedCitation }] of groupFields) {
+            const wordField = this.buildWordField(citationData, formattedCitation);
+            result = result.replace(placeholder, wordField);
+        }
+
+        if (notFoundKeys.length > 0) {
+            this.log(`Warning: ${notFoundKeys.length} citation keys not found: ${notFoundKeys.join(', ')}`);
+        }
+        this.log(`Converted ${convertedCount} pandoc citations to Word fields`);
+        return result;
     },
 
     /**
