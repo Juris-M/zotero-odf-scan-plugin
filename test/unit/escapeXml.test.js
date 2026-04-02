@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/citationUtils.js');
 
 // escapeXml() converts special characters to XML entities so that
 // arbitrary text (like JSON or user-entered citations) can be safely

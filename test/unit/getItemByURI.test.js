@@ -27,8 +27,8 @@ describe('getItemByURI', () => {
         });
 
         global.Zotero = createZoteroMock({ items: { SMITH2020: smith } });
-        delete require.cache[require.resolve('../../chrome/content/docxScan.js')];
-        DOCXScan = require('../../chrome/content/docxScan.js');
+        delete require.cache[require.resolve('../../chrome/content/citationUtils.js')];
+        DOCXScan = require('../../chrome/content/citationUtils.js');
     });
 
     it('"zu:0:SMITH2020" → resolves item (short form)', async () => {

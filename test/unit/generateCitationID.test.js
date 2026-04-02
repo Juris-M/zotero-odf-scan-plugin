@@ -1,6 +1,8 @@
 const { describe, it } = require('node:test');
+const CitationUtils = require('../../chrome/content/citationUtils.js');
+global.CitationUtils = CitationUtils;
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/docxConverter.js');
 
 // generateCitationID() creates a random 8-character alphanumeric string
 // used as the citationID in CSL citation JSON. Each Zotero citation field

@@ -1,6 +1,8 @@
 const { describe, it } = require('node:test');
+const CitationUtils = require('../../chrome/content/citationUtils.js');
+global.CitationUtils = CitationUtils;
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/docxConverter.js');
 
 // extractTextRuns() parses a Word XML paragraph (<w:p>) and returns an
 // array of text run objects. Each run has { text, originalText, remove }

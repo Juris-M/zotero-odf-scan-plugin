@@ -24,20 +24,19 @@
 */
 
 /**
- * @fileOverview Tools for automatically retrieving a citation for the given PDF
+ * @fileOverview ODF conversion module (formerly rtfScan.js).
+ * Handles ODF (.odt, .fodt) ↔ Zotero citation conversion and ODF ↔ pandoc
+ * via text-based scannable cite markers.
+ *
+ * Requires CitationUtils to be loaded first (window.CitationUtils).
  */
-
- // FilePicker is now available globally in Zotero 7+
-// If not available, fall back to Zotero.FilePicker
-var FilePicker = window.FilePicker || Zotero.FilePicker;
-
 
 /**
- * Front end for recognizing PDFs
- * @namespace
+ * Core ODF scan implementation (internal — not exported directly).
+ * Exposed via the ODFConverter object at the bottom of this file.
  */
-var Zotero_ODFScan = new function() {
-    Zotero.debug("ODF Scan: rtfScan.js loading");
+var _ODFScanImpl = new function() {
+    Zotero.debug("ODF Scan: odfConverter.js loading");
 
     const ACCEPT_ICON =  "chrome://zotero/skin/rtfscan-accept.png";
     const LINK_ICON = "chrome://zotero/skin/rtfscan-link.png";
@@ -978,9 +977,8 @@ var Zotero_ODFScan = new function() {
                 document.documentElement.advance();
             }
         } catch (e) {
-            // Just replace the content with an error message?
-            Zotero.debug("ERROR (rtf-odf-scan-for-zotero): "+e);
-            document.getElementById("odf-file-error-message").setAttribute("hidden", "false");
+            Zotero.debug("ODF Scan: Conversion error: " + e);
+            document.documentElement.lastError = e.message || String(e);
             document.documentElement.canRewind = true;
             document.documentElement.rewind();
             document.documentElement.canAdvance = false;
@@ -1372,7 +1370,7 @@ var Zotero_ODFScan = new function() {
         document.documentElement.advance();
     }
 
-    // Expose _scanODF function for use by the simplified ODF Scan dialog
+    // Expose _scanODF function for use by the ODFConverter public interface below
     this.runODFScan = function(outputMode) {
         // Read from global variables set by the calling dialog
         if (typeof window.inputFile !== 'undefined') {
@@ -1383,4 +1381,226 @@ var Zotero_ODFScan = new function() {
         }
         return _scanODF(outputMode);
     };
+};
+
+/**
+ * Public ODF converter interface.
+ * Merges the former odfConvert.js wrapper with the core ODF logic above.
+ * Loaded into window as ODFConverter via odfScan.js loadSubScript.
+ */
+var ODFConverter = {
+    scanODF: function(outputMode) {
+        Zotero.debug("ODFConverter: Starting ODF conversion");
+        Zotero.debug(`ODFConverter: inputFile = ${window.inputFile}`);
+        Zotero.debug(`ODFConverter: outputFile = ${window.outputFile}`);
+        Zotero.debug(`ODFConverter: outputMode = ${outputMode}`);
+
+        Zotero.debug("ODFConverter: Calling _ODFScanImpl.runODFScan");
+        return _ODFScanImpl.runODFScan(outputMode);
+    },
+
+    /**
+     * Pre-process an ODF file to convert pandoc citations to scannable cite markers,
+     * then run the normal ODF scan to convert markers to Zotero citations.
+     */
+    pandocToODF: async function() {
+        Zotero.debug("ODFConverter: Starting pandoc-to-ODF conversion");
+
+        // Ensure CitationUtils is loaded (may already be present in window)
+        if (typeof window.CitationUtils === 'undefined') {
+            Services.scriptloader.loadSubScript("chrome://odf-scan/content/citationUtils.js", window);
+        }
+
+        const inputPath = window.inputFile;
+        const outputPath = window.outputFile;
+        const inputFile = Zotero.File.pathToFile(inputPath);
+        const fileName = inputFile.leafName.toLowerCase();
+
+        // Determine if this is a flat ODF (.fodt) or packaged ODF (.odt)
+        const isFlat = fileName.endsWith('.fodt');
+
+        let content;
+
+        if (isFlat) {
+            // Flat ODF: read directly
+            content = await Zotero.File.getContentsAsync(inputPath);
+        } else {
+            // Packaged ODF (.odt): extract content.xml from ZIP
+            const zipReader = Components.classes["@mozilla.org/libjar/zip-reader;1"]
+                .createInstance(Components.interfaces.nsIZipReader);
+            zipReader.open(inputFile);
+            try {
+                const stream = zipReader.getInputStream("content.xml");
+                const converterStream = Components.classes["@mozilla.org/intl/converter-input-stream;1"]
+                    .createInstance(Components.interfaces.nsIConverterInputStream);
+                converterStream.init(stream, "UTF-8", 0, 0);
+                content = "";
+                let str = {};
+                while (converterStream.readString(4096, str) !== 0) {
+                    content += str.value;
+                }
+                converterStream.close();
+                stream.close();
+            } finally {
+                zipReader.close();
+            }
+        }
+
+        Zotero.debug("ODFConverter: Loaded ODF content, length: " + content.length);
+
+        // Convert pandoc citations to scannable cite markers (ODF text mode)
+        content = await CitationUtils.pandocToMarkersText(content);
+
+        if (isFlat) {
+            // Write modified content to a temp file and use it as input for ODF scan
+            const tempFlatFile = Zotero.getTempDirectory();
+            tempFlatFile.append("odf-pandoc-flat.fodt");
+            Zotero.File.putContents(tempFlatFile, content);
+            window.inputFile = tempFlatFile.path;
+        } else {
+            // Write a temp .odt with the markers inserted, then hand it to _ODFScanImpl as
+            // inputFile. _ODFScanImpl will copy temp→outputFile itself, so inputFile and
+            // outputFile remain distinct and the copy-then-delete pattern in
+            // writeZipfileContent works correctly.
+            const tempOdt = Zotero.getTempDirectory();
+            tempOdt.append("odf-pandoc-input.odt");
+            if (tempOdt.exists()) tempOdt.remove(false);
+            inputFile.copyTo(tempOdt.parent, tempOdt.leafName);
+
+            // Write modified content.xml to a second temp file for zip insertion
+            const tempContentFile = Zotero.getTempDirectory();
+            tempContentFile.append("odf-pandoc-content.xml");
+            Zotero.File.putContents(tempContentFile, content);
+
+            // Replace content.xml in the temp .odt
+            const zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
+                .createInstance(Components.interfaces.nsIZipWriter);
+            zipWriter.open(tempOdt, 0x04); // RDWR
+            try {
+                zipWriter.removeEntry("content.xml", false);
+                zipWriter.addEntryFile("content.xml", 9, tempContentFile, false);
+            } finally {
+                zipWriter.close();
+            }
+
+            if (tempContentFile.exists()) tempContentFile.remove(false);
+
+            // Point inputFile at the temp .odt; outputFile stays as the final destination
+            window.inputFile = tempOdt.path;
+        }
+
+        Zotero.debug("ODFConverter: Pandoc markers inserted, running ODF scan");
+
+        // Now run normal ODF scan to convert markers to citations
+        return this.scanODF("tocitations");
+    },
+
+    /**
+     * Convert Zotero citations in an ODF file to pandoc citation syntax.
+     * Two-step: first convert citations to scannable cite markers (via _ODFScanImpl),
+     * then convert those markers to pandoc [@citekey] syntax.
+     */
+    citationsToPandocODF: async function() {
+        Zotero.debug("ODFConverter: Starting citations-to-pandoc conversion");
+
+        // Ensure CitationUtils is loaded
+        if (typeof window.CitationUtils === 'undefined') {
+            Services.scriptloader.loadSubScript("chrome://odf-scan/content/citationUtils.js", window);
+        }
+
+        // Step 1: Run ODF scan in tomarkers mode to convert citations to markers
+        const originalOutputPath = window.outputFile;
+        const inputPath = window.inputFile;
+        const inputFile = Zotero.File.pathToFile(inputPath);
+        const fileName = inputFile.leafName.toLowerCase();
+        const isFlat = fileName.endsWith('.fodt');
+
+        // Run the tomarkers conversion - this writes to window.outputFile
+        this.scanODF("tomarkers");
+
+        // Wait for the conversion to complete
+        await new Promise((resolve, reject) => {
+            const checkInterval = setInterval(() => {
+                if (document.documentElement.canAdvance || document.documentElement.canRewind) {
+                    clearInterval(checkInterval);
+                    if (document.documentElement.canRewind) {
+                        const msg = document.documentElement.lastError || "ODF tomarkers conversion failed";
+                        reject(new Error(msg));
+                    } else {
+                        resolve();
+                    }
+                }
+            }, 100);
+            // Timeout after 30 seconds — treat as failure rather than silently continuing
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                reject(new Error("ODF conversion timed out"));
+            }, 30000);
+        });
+
+        // Step 2: Read the output file (which now has markers) and convert markers to pandoc
+        const outputFile = Zotero.File.pathToFile(originalOutputPath);
+
+        let content;
+        if (isFlat) {
+            content = await Zotero.File.getContentsAsync(originalOutputPath);
+        } else {
+            // Extract content.xml from the output ODF ZIP
+            const zipReader = Components.classes["@mozilla.org/libjar/zip-reader;1"]
+                .createInstance(Components.interfaces.nsIZipReader);
+            zipReader.open(outputFile);
+            try {
+                const stream = zipReader.getInputStream("content.xml");
+                const converterStream = Components.classes["@mozilla.org/intl/converter-input-stream;1"]
+                    .createInstance(Components.interfaces.nsIConverterInputStream);
+                converterStream.init(stream, "UTF-8", 0, 0);
+                content = "";
+                let str = {};
+                while (converterStream.readString(4096, str) !== 0) {
+                    content += str.value;
+                }
+                converterStream.close();
+                stream.close();
+            } finally {
+                zipReader.close();
+            }
+        }
+
+        // Convert markers to pandoc syntax
+        content = await CitationUtils.markersToPandoc(content);
+
+        // Write back
+        if (isFlat) {
+            Zotero.File.putContents(outputFile, content);
+        } else {
+            // Write modified content.xml back into the ODF ZIP
+            const tempFile = Zotero.getTempDirectory();
+            tempFile.append("odf-pandoc-content.xml");
+            Zotero.File.putContents(tempFile, content);
+
+            const zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
+                .createInstance(Components.interfaces.nsIZipWriter);
+            try {
+                zipWriter.open(outputFile, 0x04); // RDWR
+            } catch (e) {
+                if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
+                    throw new Error(
+                        `The output file is locked or open in another application. ` +
+                        `Please close "${outputFile.leafName}" and try again.`
+                    );
+                }
+                throw e;
+            }
+            try {
+                zipWriter.removeEntry("content.xml", false);
+                zipWriter.addEntryFile("content.xml", 9, tempFile, false);
+            } finally {
+                zipWriter.close();
+            }
+
+            if (tempFile.exists()) tempFile.remove(false);
+        }
+
+        Zotero.debug("ODFConverter: Citations converted to pandoc syntax");
+    }
 };

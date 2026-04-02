@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/citationUtils.js');
 
 // labelToPandocLocator() maps CSL locator labels (used internally by
 // Zotero) to pandoc's abbreviated locator prefixes. For example,

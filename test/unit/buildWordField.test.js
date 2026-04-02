@@ -1,6 +1,8 @@
 const { describe, it } = require('node:test');
+const CitationUtils = require('../../chrome/content/citationUtils.js');
+global.CitationUtils = CitationUtils;
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/docxConverter.js');
 
 // buildWordField() creates the Word XML for a Zotero citation field.
 // Word fields have a specific structure: fldChar "begin" → instrText

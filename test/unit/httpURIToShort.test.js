@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/citationUtils.js');
 
 // httpURIToShort() converts a full HTTP Zotero URI to the short zu:/zg: form
 // that rtfScan.js markers require. It is purely string-based (no item lookup).

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
+## [3.2.0] - 2026-04-02
+
+### Fixed
+- parsing of pandoc syntac for prefix/suffix/suppress author
+- various smaller bug fixes on other formats
+
+
+### Changes
+- Fully update architecture to reflect new capabilities since 3.0
+
 ## [3.1.1] - 2026-04-01
 
 ### Fixed

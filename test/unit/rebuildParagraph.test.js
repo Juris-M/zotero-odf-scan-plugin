@@ -1,6 +1,8 @@
 const { describe, it } = require('node:test');
+const CitationUtils = require('../../chrome/content/citationUtils.js');
+global.CitationUtils = CitationUtils;
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/docxConverter.js');
 
 // rebuildParagraph() takes the original paragraph XML and a (possibly
 // modified) array of text runs from extractTextRuns(), and produces

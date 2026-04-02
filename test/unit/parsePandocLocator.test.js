@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/citationUtils.js');
 
 // parsePandocLocator() takes the text after the comma in a pandoc citation
 // (e.g. "p. 45" from [@smith, p. 45]) and splits it into a normalized

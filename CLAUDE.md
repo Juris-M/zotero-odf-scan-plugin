@@ -64,38 +64,47 @@ Default preferences (all under `extensions.zotero.`):
 #### `odfScan.js` — dialog controller (`Zotero_ODFScanDialog`)
 - `init()` attaches event listeners and restores last-used paths from prefs
 - `processDocument()` detects file type from extension, routes to `processDOCX()` or `processODF()`
-- **Important**: Creates stub `canAdvance`/`advance`/`rewind` on `document.documentElement` because `rtfScan.js` still uses them
+- **Important**: Creates stub `canAdvance`/`advance`/`rewind` on `document.documentElement` because `odfConverter.js` still uses them
 - **Important**: Communicates with converters via globals: `window.inputFile`, `window.outputFile`, `window.DOCXScanComplete`, `window.DOCXScanFailed`
-- Scripts are loaded lazily via `Services.scriptloader.loadSubScript()`
+- Scripts are loaded lazily via `Services.scriptloader.loadSubScript()` — always loads `citationUtils.js` first
 - ODF completion is detected with `setTimeout(200ms)` polling of flags — fragile but inherited from original design
 
-#### `odfConvert.js` — ODF conversion wrapper (`ODFScanConvert`)
-- `scanODF(outputMode)` — loads `rtfScan.js` dynamically, calls `Zotero_ODFScan.runODFScan(outputMode)`
-- `pandocToODF()` — reads ODF content (flat or ZIP), converts pandoc citations to scannable cite markers using `DOCXScanConvert.pandocToMarkers()`, then runs ODF scan
-- `citationsToPandocODF()` — two-step: ODF citations → markers via ODF scan, then markers → pandoc
+#### `citationUtils.js` — shared format-agnostic utilities (`CitationUtils`)
+Loaded by both `odfScan.js` paths before either converter is loaded. Contains everything not tied to a specific XML format:
+- Pandoc syntax parsing: `parsePandocCitationGroup`, `parsePandocLocator`, `labelToPandocLocator`
+- Zotero item lookup: `findItemByCitationKey`, `getItemByURI`
+- URI construction: `buildItemURI`, `buildItemURIShort`, `httpURIToShort`
+- XML escaping: `escapeXml`
+- Text-based marker↔pandoc converters used by the ODF pandoc flows:
+  - `pandocToMarkersText(content)` — pandoc plain text → scannable cite markers (ODF mode)
+  - `markersToPandoc(content)` — scannable cite markers → pandoc plain text
 
-#### `rtfScan.js` — core ODF/RTF scan logic (`Zotero_ODFScan` function constructor)
-**WARNING**: This file's `Zotero_ODFScan` is a function constructor (`new function(){...}`), distinct from the plain object of the same name in `odfScanMenu.js`. They coexist because they are loaded into different window contexts.
+#### `odfConverter.js` — ODF scan logic (`_ODFScanImpl` + `ODFConverter`)
+Merges the former `rtfScan.js` (core ODF processing) and `odfConvert.js` (wrapper) into one file.
 
-- Legacy code originally written for both RTF and ODF
+`_ODFScanImpl` (internal function constructor):
 - Contains `_scanODF(outputMode)` — the main ODF processing function using heavy regex-based XML manipulation
 - Zotero citation XML template: `<text:reference-mark-start text:name="ZOTERO_ITEM {...} RND{id}"/>...`
 - Scannable Cite marker template: `{ prefix | readable | locator | suffix | uri }`
-- `runODFScan(outputMode)` — public entry point exposed for `odfConvert.js`
+- `runODFScan(outputMode)` — public entry point used by `ODFConverter`
 - **Known issue**: Attempts to load stringbundle from `chrome://rtf-odf-scan-for-zotero/locale/zotero.properties` (old plugin ID) — falls back to hardcoded English strings when this fails
-- **Known issue**: `var FilePicker = window.FilePicker || Zotero.FilePicker` at top may not resolve correctly; the dialog now uses FilePicker imported via `ChromeUtils.importESModule` in `odfScan.js` instead
 
-#### `docxScan.js` — DOCX scan logic (`DOCXScanConvert`)
+`ODFConverter` (public object, `window.ODFConverter`):
+- `scanODF(outputMode)` — wraps `_ODFScanImpl.runODFScan(outputMode)`
+- `pandocToODF()` — reads ODF content (flat or ZIP), converts pandoc citations to scannable cite markers using `CitationUtils.pandocToMarkersText()`, then runs ODF scan
+- `citationsToPandocODF()` — two-step: ODF citations → markers via ODF scan, then `CitationUtils.markersToPandoc()`
+
+#### `docxConverter.js` — DOCX scan logic (`DOCXConverter`)
+DOCX-specific logic only. Format-agnostic utilities live in `citationUtils.js`.
 - `scanDOCX(outputMode)` — extracts DOCX ZIP, reads `word/document.xml`, processes it, repacks ZIP
 - ZIP extraction uses `nsIZipReader`; ZIP creation uses `nsIZipWriter`
 - Four conversion methods map to the four modes:
   - `citationsToMarkers(content)` — Word field XML → scannable cite markers
   - `citationsToPandoc(content)` — Word field XML → pandoc syntax
-  - `pandocToMarkers(content)` — pandoc syntax → scannable cite markers
+  - `pandocToMarkers(content)` — pandoc syntax → scannable cite markers (DOCX/Word XML mode)
+  - `pandocToCitationsDirect(content)` — pandoc syntax → Zotero Word fields directly
   - `markersToCitations(content)` — scannable cite markers → Word field XML
-- Pure utility functions (tested in isolation):
-  - `escapeXml`, `generateCitationID`, `extractTextRuns`, `rebuildParagraph`, `buildWordField`
-  - `parsePandocCitationGroup`, `parsePandocLocator`, `labelToPandocLocator`, `getItemByURI`
+- DOCX-only utilities (not in citationUtils.js): `extractTextRuns`, `rebuildParagraph`, `replaceAsync`, `buildWordField`, `generateCitationID`, `buildCitationData`, `buildCitationDataFromURI`
 
 #### `odfScan.css` — dialog styles
 
@@ -144,7 +153,7 @@ npm run test:integration  # test/integration/*.test.js
 npm run test:all       # lint + tests
 ```
 
-- **Unit tests** (`test/unit/`) — test pure functions extracted from `docxScan.js`
+- **Unit tests** (`test/unit/`) — test pure functions from `citationUtils.js` and `docxConverter.js`
 - **Integration tests** (`test/integration/`) — test full conversion pipelines using XML fixtures in `test/fixtures/` and a Zotero mock at `test/helpers/zotero-mock.js`
 - Tests run entirely in Node.js; no running Zotero instance needed
 
@@ -165,12 +174,8 @@ Release script updates version in `package.json`, `manifest.json`, `CITATION.cff
 
 ## Known issues / areas to watch
 
-1. **rtfScan.js stringbundle**: Uses old chrome path `chrome://rtf-odf-scan-for-zotero/` (old plugin ID). Always fails and falls back to hardcoded English strings. Not a bug in practice, but localization is broken for rtfScan.js strings.
+1. **odfConverter.js stringbundle**: Uses old chrome path `chrome://rtf-odf-scan-for-zotero/` (old plugin ID). Always fails and falls back to hardcoded English strings. Not a bug in practice, but localization is broken for ODF conversion strings.
 
 2. **setTimeout-based completion detection**: `odfScan.js` uses `setTimeout(200ms)` to poll `conversionComplete`/`conversionFailed` flags after triggering ODF conversion. Fragile — if conversion takes longer, the status update runs before it finishes.
 
-3. **Naming collision**: `Zotero_ODFScan` exists as both a plain object (`odfScanMenu.js`) and a function constructor (`rtfScan.js`). They live in different window contexts and do not conflict at runtime, but reading the code requires care.
-
-4. **manifest.json `strict_max_version`**: Currently `"9.0.*"`. May need updating when Zotero releases version 10+.
-
-5. **`rtfScan.js` FilePicker**: Has a legacy `var FilePicker = window.FilePicker || Zotero.FilePicker` fallback at the top. The dialog now uses its own FilePicker from `chrome://zotero/content/modules/filePicker.mjs` instead, so this is largely a dead code path.
+3. **manifest.json `strict_max_version`**: Currently `"9.0.*"`. May need updating when Zotero releases version 10+.

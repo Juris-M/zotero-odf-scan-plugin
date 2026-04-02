@@ -35,8 +35,10 @@ describe('pandocToMarkers', () => {
         global.Zotero = createZoteroMock({
             items: { SMITH2020: smith, JONES2019: jones }
         });
-        delete require.cache[require.resolve('../../chrome/content/docxScan.js')];
-        DOCXScan = require('../../chrome/content/docxScan.js');
+        delete require.cache[require.resolve('../../chrome/content/citationUtils.js')];
+        delete require.cache[require.resolve('../../chrome/content/docxConverter.js')];
+        global.CitationUtils = require('../../chrome/content/citationUtils.js');
+        DOCXScan = require('../../chrome/content/docxConverter.js');
     });
 
     it('"See [@smith2020]." → marker with key SMITH2020, author "Smith", no pandoc syntax left', async () => {

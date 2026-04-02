@@ -4,8 +4,9 @@ const { createZoteroMock, createMockItem } = require('../helpers/zotero-mock.js'
 
 // markersToPandoc() converts pipe-separated scannable cite markers into
 // pandoc citation syntax. This is used for the ODF→pandoc flow, where
-// ODF citations are first converted to markers (via rtfScan.js), then
+// ODF citations are first converted to markers (via odfConverter.js), then
 // this function converts the markers to pandoc syntax.
+// Lives in citationUtils.js (shared between ODF and DOCX flows).
 //
 // Marker format: { prefix | Author, Title (Year) | locator | suffix | uri }
 // Output examples:
@@ -38,8 +39,9 @@ describe('markersToPandoc', () => {
         global.Zotero = createZoteroMock({
             items: { SMITH2020: smith, JONES2019: jones }
         });
-        delete require.cache[require.resolve('../../chrome/content/docxScan.js')];
-        DOCXScan = require('../../chrome/content/docxScan.js');
+        delete require.cache[require.resolve('../../chrome/content/citationUtils.js')];
+        global.CitationUtils = require('../../chrome/content/citationUtils.js');
+        DOCXScan = global.CitationUtils; // markersToPandoc lives in citationUtils.js
     });
 
     it('basic marker → [@smith2020]', async () => {

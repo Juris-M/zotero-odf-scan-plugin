@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const DOCXScan = require('../../chrome/content/docxScan.js');
+const DOCXScan = require('../../chrome/content/citationUtils.js');
 
 // parsePandocCitationGroup() parses the content inside pandoc citation
 // brackets, e.g. the "see @smith2020, p. 45; -@jones2019" part of

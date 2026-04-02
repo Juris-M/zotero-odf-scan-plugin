@@ -36,7 +36,7 @@ var Zotero_ODFScanDialog = {
     async init() {
         Zotero.debug("ODF Scan Dialog: Initializing");
 
-        // Create stub methods that rtfScan.js expects on document.documentElement
+        // Create stub methods that odfConverter.js expects on document.documentElement
         document.documentElement.canAdvance = false;
         document.documentElement.canRewind = false;
         document.documentElement.advance = () => {
@@ -218,13 +218,16 @@ var Zotero_ODFScanDialog = {
 
     async processDOCX(outputMode) {
         try {
-            // Load the DOCX conversion module
-            if (typeof window.DOCXScanConvert === 'undefined') {
-                Services.scriptloader.loadSubScript("chrome://odf-scan/content/docxScan.js", window);
+            // Load shared utilities then the DOCX conversion module
+            if (typeof window.CitationUtils === 'undefined') {
+                Services.scriptloader.loadSubScript("chrome://odf-scan/content/citationUtils.js", window);
+            }
+            if (typeof window.DOCXConverter === 'undefined') {
+                Services.scriptloader.loadSubScript("chrome://odf-scan/content/docxConverter.js", window);
             }
 
             Zotero.debug(`ODF Scan: Starting DOCX conversion (${outputMode})`);
-            await window.DOCXScanConvert.scanDOCX(outputMode);
+            await window.DOCXConverter.scanDOCX(outputMode);
 
             // Check completion status
             if (window.DOCXScanComplete) {
@@ -252,15 +255,18 @@ var Zotero_ODFScanDialog = {
 
     async processODF(outputMode) {
         try {
-            // Load the ODF conversion module
-            if (typeof window.ODFScanConvert === 'undefined') {
-                Services.scriptloader.loadSubScript("chrome://odf-scan/content/odfConvert.js", window);
+            // Load shared utilities then the ODF conversion module
+            if (typeof window.CitationUtils === 'undefined') {
+                Services.scriptloader.loadSubScript("chrome://odf-scan/content/citationUtils.js", window);
+            }
+            if (typeof window.ODFConverter === 'undefined') {
+                Services.scriptloader.loadSubScript("chrome://odf-scan/content/odfConverter.js", window);
             }
 
             if (outputMode === 'pandoctocitations') {
                 // Pandoc mode: async pre-processing, then ODF scan
                 try {
-                    await window.ODFScanConvert.pandocToODF();
+                    await window.ODFConverter.pandocToODF();
 
                     // Wait for the ODF scan completion flags
                     setTimeout(() => {
@@ -269,7 +275,8 @@ var Zotero_ODFScanDialog = {
                                 `Document processed successfully.\nOutput saved to: ${window.outputFile}`,
                                 true);
                         } else if (this.conversionFailed) {
-                            this.showError("Conversion failed. Please check the debug log for details.");
+                            const msg = document.documentElement.lastError || "Conversion failed. Please check the debug log for details.";
+                            this.showError(msg);
                         } else {
                             this.showStatus("Processing complete",
                                 `Output saved to: ${window.outputFile}`,
@@ -292,7 +299,7 @@ var Zotero_ODFScanDialog = {
             if (outputMode === 'topandoc') {
                 // Two-step: ODF citations → markers → pandoc syntax
                 try {
-                    await window.ODFScanConvert.citationsToPandocODF();
+                    await window.ODFConverter.citationsToPandocODF();
 
                     // Wait for the ODF scan completion flags (tomarkers step)
                     setTimeout(() => {
@@ -314,7 +321,7 @@ var Zotero_ODFScanDialog = {
 
                 } catch (e) {
                     Zotero.debug("ODF Scan: Error during citations-to-pandoc conversion: " + e);
-                    this.showError("Error converting to pandoc citations: " + e);
+                    this.showError(e.message || String(e));
                     let processButton = document.getElementById('process-button');
                     processButton.disabled = false;
                 }
@@ -324,7 +331,7 @@ var Zotero_ODFScanDialog = {
             // Run conversion asynchronously (ODF conversion is synchronous but uses setTimeout)
             setTimeout(() => {
                 try {
-                    window.ODFScanConvert.scanODF(outputMode);
+                    window.ODFConverter.scanODF(outputMode);
 
                     // Wait a moment for the conversion to set the completion flags
                     setTimeout(() => {
@@ -333,7 +340,8 @@ var Zotero_ODFScanDialog = {
                                 `Document processed successfully.\nOutput saved to: ${window.outputFile}`,
                                 true);
                         } else if (this.conversionFailed) {
-                            this.showError("Conversion failed. Please check the debug log for details.");
+                            const msg = document.documentElement.lastError || "Conversion failed. Please check the debug log for details.";
+                            this.showError(msg);
                         } else {
                             this.showStatus("Processing complete",
                                 `Output saved to: ${window.outputFile}`,
