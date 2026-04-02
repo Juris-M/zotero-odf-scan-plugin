@@ -72,4 +72,20 @@ describe('parsePandocCitationGroup', () => {
         assert.equal(entries[0].citekey, 'smith2020');
         assert.equal(entries[1].citekey, 'jones2019');
     });
+
+    it('"see @smith2020 and others" → suffix "and others" captured without comma', () => {
+        const entries = DOCXScan.parsePandocCitationGroup('see @smith2020 and others');
+        assert.equal(entries.length, 1);
+        assert.equal(entries[0].citekey, 'smith2020');
+        assert.equal(entries[0].prefix, 'see');
+        assert.equal(entries[0].suffix, 'and others');
+        assert.equal(entries[0].locator, '');
+    });
+
+    it('"@smith2020, chap. 3" → label "chapter" passed through', () => {
+        const entries = DOCXScan.parsePandocCitationGroup('@smith2020, chap. 3');
+        assert.equal(entries.length, 1);
+        assert.equal(entries[0].locator, 'ch. 3');
+        assert.equal(entries[0].label, 'chapter');
+    });
 });

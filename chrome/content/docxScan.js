@@ -386,34 +386,34 @@ var DOCXScanConvert = {
                 const citationData = JSON.parse(jsonStr);
                 this.log("Found citation: " + JSON.stringify(citationData).substring(0, 100));
 
-                // Extract first citation item
+                // Extract all citation items
                 if (!citationData.citationItems || citationData.citationItems.length === 0) {
                     this.log("Warning: No citation items found");
                     return fullMatch;
                 }
 
-                const item = citationData.citationItems[0];
+                const cite = citationData.properties?.plainCitation || "";
 
-                // Extract URI
-                const uri = item.uris && item.uris.length > 0 ? item.uris[0] : null;
-                if (!uri) {
-                    this.log("Warning: No URI found in citation");
-                    return fullMatch;
+                // Build one marker per citation item
+                const markers = [];
+                for (const citItem of citationData.citationItems) {
+                    const uri = citItem.uris && citItem.uris.length > 0 ? citItem.uris[0] : null;
+                    if (!uri) continue;
+                    const shortURI = this.httpURIToShort(uri);
+                    const locator = citItem.locator || "";
+                    const prefix = citItem.prefix || "";
+                    const suffix = citItem.suffix || "";
+                    const suppress = citItem["suppress-author"] ? "-" : "";
+                    markers.push(`{ ${prefix} | ${suppress}${cite} | ${locator} | ${suffix} | ${shortURI}}`);
                 }
 
-                // Extract components for marker
-                const cite = citationData.properties?.plainCitation || "";
-                const locator = item.locator || "";
-                const suppress = item["suppress-author"] ? "-" : "";
+                if (markers.length === 0) return fullMatch;
 
-                // Build marker format: { | cite | locator | suppress | uri }
-                const marker = `{ | ${suppress}${cite} | ${locator} | | ${uri}}`;
-
-                // Wrap in Word text run
-                const markerXml = `<w:r><w:t>${this.escapeXml(marker)}</w:t></w:r>`;
+                // Wrap all markers in Word text runs
+                const markerXml = markers.map(m => `<w:r><w:t>${this.escapeXml(m)}</w:t></w:r>`).join('');
 
                 convertedCount++;
-                this.log(`Converted citation to marker: ${marker}`);
+                this.log(`Converted citation to ${markers.length} marker(s)`);
 
                 return markerXml;
 
@@ -505,8 +505,13 @@ var DOCXScanConvert = {
                     // Locator
                     if (citItem.locator) {
                         const label = citItem.label || 'page';
-                        const locatorPrefix = this.labelToPandocLocator(label);
-                        entry += ', ' + locatorPrefix + citItem.locator;
+                        let loc = citItem.locator;
+                        // If locator is bare (starts with digit), prepend the label prefix.
+                        // If it already contains the prefix (our stored format), use as-is.
+                        if (/^\d/.test(loc)) {
+                            loc = this.labelToPandocLocator(label) + loc;
+                        }
+                        entry += ', ' + loc;
                     }
 
                     // Suffix
@@ -562,10 +567,10 @@ var DOCXScanConvert = {
         this.log("Converting markers to pandoc syntax");
 
         const markerRegex = /\{\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|\s*([^|}]*?)\s*\}/g;
-        let convertedCount = 0;
-        const replacements = [];
+        const allMatches = [];
         let match;
 
+        // Collect all matches with item lookups
         while ((match = markerRegex.exec(content)) !== null) {
             const [fullMatch, prefix, cite, locator, suffix, uri] = match;
 
@@ -575,43 +580,59 @@ var DOCXScanConvert = {
                 continue;
             }
 
-            // Get citation key
             let citekey = '';
             try { citekey = item.getField('citationKey') || ''; } catch(e) {}
             if (!citekey) citekey = item.citationKey || item.key;
 
-            // Detect suppress-author (cite starts with -)
-            let suppressAuthor = false;
-            let cleanCite = cite.trim();
-            if (cleanCite.startsWith('-')) {
-                suppressAuthor = true;
-            }
-
-            let entry = '';
-            if (prefix.trim()) {
-                entry += prefix.trim() + ' ';
-            }
-            if (suppressAuthor) {
-                entry += '-';
-            }
-            entry += '@' + citekey;
-            if (locator.trim()) {
-                entry += ', ' + locator.trim();
-            }
-            if (suffix.trim()) {
-                entry += ', ' + suffix.trim();
-            }
-
-            replacements.push({ fullMatch, replacement: '[' + entry + ']' });
-            convertedCount++;
+            allMatches.push({
+                index: match.index,
+                endIndex: match.index + fullMatch.length,
+                prefix: prefix.trim(),
+                cite: cite.trim(),
+                citekey,
+                locator: locator.trim(),
+                suffix: suffix.trim(),
+                suppressAuthor: cite.trim().startsWith('-')
+            });
         }
 
+        // Group consecutive markers (no content between them) into single pandoc cites
+        const groups = [];
+        let i = 0;
+        while (i < allMatches.length) {
+            const group = [allMatches[i]];
+            while (i + 1 < allMatches.length && allMatches[i + 1].index === allMatches[i].endIndex) {
+                i++;
+                group.push(allMatches[i]);
+            }
+            groups.push(group);
+            i++;
+        }
+
+        // Build replacements in reverse order to preserve indices
+        const replacements = [];
+        for (const group of groups) {
+            const parts = group.map(m => {
+                let entry = '';
+                if (m.prefix) entry += m.prefix + ' ';
+                if (m.suppressAuthor) entry += '-';
+                entry += '@' + m.citekey;
+                if (m.locator) entry += ', ' + m.locator;
+                if (m.suffix) entry += ', ' + m.suffix;
+                return entry;
+            });
+            const start = group[0].index;
+            const end = group[group.length - 1].endIndex;
+            replacements.push({ start, end, replacement: '[' + parts.join('; ') + ']' });
+        }
+
+        // Apply replacements in reverse order
         let result = content;
-        for (const r of replacements) {
-            result = result.replace(r.fullMatch, r.replacement);
+        for (const r of replacements.reverse()) {
+            result = result.substring(0, r.start) + r.replacement + result.substring(r.end);
         }
 
-        this.log(`Converted ${convertedCount} markers to pandoc syntax`);
+        this.log(`Converted ${groups.length} citation group(s) to pandoc syntax`);
         return result;
     },
 
@@ -766,7 +787,7 @@ var DOCXScanConvert = {
             `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
             `<w:r><w:t>${this.escapeXml(formattedCitation)}</w:t></w:r>` +
             `<w:r><w:fldChar w:fldCharType="end"/></w:r>` +
-            `<w:r><w:t>`;  // Reopen a text run for any following content
+            `<w:r><w:t xml:space="preserve">`;  // Reopen a text run for any following content
 
         return field;
     },
@@ -926,6 +947,96 @@ var DOCXScanConvert = {
     },
 
     /**
+     * Convert pandoc citations to scannable cite markers in plain text / ODF XML.
+     * Unlike pandocToMarkers(), this does not parse Word XML runs — it works
+     * directly on the string, suitable for ODF content.xml where citations
+     * appear as uninterrupted plain text within <text:p> elements.
+     *
+     * Also handles author-in-text @key [loc] form.
+     */
+    async pandocToMarkersText(content) {
+        this.log("Converting pandoc citations to markers (ODF/text mode)");
+
+        let convertedCount = 0;
+        const notFoundKeys = [];
+
+        // Helper: look up item and return { item, firstCreator, title, year, uri } or null
+        // Uses the short zu:/zg: format that rtfScan.js markers require.
+        const lookupItem = async (citekey) => {
+            const item = await this.findItemByCitationKey(citekey);
+            if (!item) {
+                this.log(`Warning: Item not found for citationKey: ${citekey}`);
+                notFoundKeys.push(citekey);
+                return null;
+            }
+            const uri = await this.buildItemURIShort(item);
+            let firstCreator = '';
+            let title = '';
+            let year = '';
+            try { firstCreator = (item.getField('firstCreator') || '').replace(/[\u2068\u2069]/g, ''); } catch(e) {}
+            try { title = item.getField('title') || ''; } catch(e) {}
+            try { year = item.getField('year') || ''; } catch(e) {
+                try { year = (item.getField('date') || '').match(/\d{4}/)?.[0] || ''; } catch(e2) {}
+            }
+            return { item, firstCreator, title, year, uri };
+        };
+
+        // Pass 1: bracket groups  [@key; @key2, p. 3]
+        // Collect all matches first, then process in reverse to preserve string indices.
+        const bracketRegex = /\[([^\[\]]*@[^\[\]]*)\]/g;
+        let bm;
+        const bracketMatches = [];
+        while ((bm = bracketRegex.exec(content)) !== null) {
+            bracketMatches.push({ full: bm[0], inner: bm[1], index: bm.index });
+        }
+        for (let i = bracketMatches.length - 1; i >= 0; i--) {
+            const { full, inner, index } = bracketMatches[i];
+            const entries = this.parsePandocCitationGroup(inner);
+            const markers = [];
+            for (const entry of entries) {
+                const found = await lookupItem(entry.citekey);
+                if (!found) continue;
+                let cite = found.firstCreator;
+                if (found.title) cite += (cite ? ', ' : '') + found.title;
+                if (found.year) cite += ` (${found.year})`;
+                if (entry.suppressAuthor) cite = '-' + cite;
+                markers.push(`{ ${entry.prefix} | ${cite} | ${entry.locator} | ${entry.suffix} | ${found.uri}}`);
+                convertedCount++;
+            }
+            if (markers.length) {
+                content = content.substring(0, index) + markers.join('') + content.substring(index + full.length);
+            }
+        }
+
+        // Pass 2: author-in-text  @key [loc]  or bare  @key
+        // After pass 1 the bracket groups are gone, so all remaining @key occurrences are author-in-text.
+        const aitRegex = /@([\w][\w:.#$%&\-+?<>~/]*)(?:\s*\[([^\]]*)\])?/g;
+        let am;
+        const aitMatches = [];
+        while ((am = aitRegex.exec(content)) !== null) {
+            aitMatches.push({ full: am[0], citekey: am[1], locatorText: am[2], index: am.index });
+        }
+        for (let i = aitMatches.length - 1; i >= 0; i--) {
+            const { full, citekey, locatorText, index } = aitMatches[i];
+            const found = await lookupItem(citekey);
+            if (!found) continue;
+            let cite = '-' + found.firstCreator;
+            if (found.title) cite += ', ' + found.title;
+            if (found.year) cite += ` (${found.year})`;
+            const locatorInfo = locatorText ? this.parsePandocLocator(locatorText.trim()) : { locator: '', suffix: '' };
+            const marker = `{ | ${cite} | ${locatorInfo.locator} | ${locatorInfo.suffix} | ${found.uri}}`;
+            convertedCount++;
+            content = content.substring(0, index) + found.firstCreator + ' ' + marker + content.substring(index + full.length);
+        }
+
+        if (notFoundKeys.length > 0) {
+            this.log(`Warning: ${notFoundKeys.length} citation keys not found: ${notFoundKeys.join(', ')}`);
+        }
+        this.log(`Converted ${convertedCount} pandoc citations to markers (ODF/text mode)`);
+        return content;
+    },
+
+    /**
      * Convert pandoc citation groups directly to Zotero Word fields.
      * Multi-item groups like [@a; @b] become a single Word field with multiple
      * citationItems, matching how Zotero represents them natively.
@@ -956,11 +1067,15 @@ var DOCXScanConvert = {
             const pandocCiteRegex = /\[([^\[\]]*@[^\[\]]*)\]/g;
             let match;
             const citations = [];
+            // Track all [..@..] ranges so author-in-text pass can skip them
+            const bracketRanges = [];
 
+            // Pass 1: bracket citation groups [see @key, p. 3; @key2]
             while ((match = pandocCiteRegex.exec(plainText)) !== null) {
                 const innerText = match[1];
                 const startIdx = match.index;
                 const endIdx = match.index + match[0].length - 1;
+                bracketRanges.push({ startIdx, endIdx });
 
                 this.log(`Found pandoc citation group: ${match[0]}`);
 
@@ -980,11 +1095,11 @@ var DOCXScanConvert = {
                     const citationItem = { uris: [uri] };
                     if (entry.locator) {
                         citationItem.locator = entry.locator;
-                        citationItem.label = "page";
+                        citationItem.label = entry.label || "page";
                     }
-                    if (entry.suppressAuthor) {
-                        citationItem["suppress-author"] = true;
-                    }
+                    if (entry.prefix) citationItem.prefix = entry.prefix;
+                    if (entry.suffix) citationItem.suffix = entry.suffix;
+                    if (entry.suppressAuthor) citationItem["suppress-author"] = true;
                     citationItems.push(citationItem);
 
                     let firstCreator = '';
@@ -1007,17 +1122,13 @@ var DOCXScanConvert = {
                 const formattedCitation = formattedParts.join('; ');
                 const citationData = {
                     citationID: this.generateCitationID(),
-                    properties: {
-                        formattedCitation,
-                        plainCitation: formattedCitation
-                    },
+                    properties: { formattedCitation, plainCitation: formattedCitation },
                     citationItems,
                     schema: "https://github.com/citation-style-language/schema/raw/master/csl-citation.json"
                 };
 
                 const placeholder = `ZOTERO_PANDOC_${this.generateCitationID()}`;
                 groupFields.set(placeholder, { citationData, formattedCitation });
-
                 citations.push({
                     startIdx, endIdx,
                     startRun: charMap[startIdx].runIdx,
@@ -1026,6 +1137,75 @@ var DOCXScanConvert = {
                     endChar: charMap[endIdx].charIdx,
                     replacement: placeholder
                 });
+            }
+
+            // Pass 2: author-in-text  @key [locator]  or  @key
+            // These appear outside brackets, e.g. "@smith [p. 3] argues"
+            // Replace with: author-name plain text + suppress-author Word field
+            const aitRegex = /@([\w][\w:.#$%&\-+?<>~/]*)(?:\s*\[([^\]]*)\])?/g;
+            let aitMatch;
+            while ((aitMatch = aitRegex.exec(plainText)) !== null) {
+                const pos = aitMatch.index;
+                // Skip @key inside any [..@..] bracket group
+                if (bracketRanges.some(r => pos >= r.startIdx && pos <= r.endIdx)) continue;
+
+                const citekey = aitMatch[1];
+                const locatorText = aitMatch[2] || '';
+                const startIdx = aitMatch.index;
+                const endIdx = aitMatch.index + aitMatch[0].length - 1;
+
+                const item = await this.findItemByCitationKey(citekey);
+                if (!item) {
+                    this.log(`Warning: Item not found for author-in-text key: ${citekey}`);
+                    notFoundKeys.push(citekey);
+                    continue;
+                }
+
+                const uri = await this.buildItemURI(item);
+                let firstCreator = '';
+                let year = '';
+                try { firstCreator = (item.getField('firstCreator') || '').replace(/[\u2068\u2069]/g, ''); } catch(e) {}
+                try { year = item.getField('year') || ''; } catch(e) {
+                    try { year = (item.getField('date') || '').match(/\d{4}/)?.[0] || ''; } catch(e2) {}
+                }
+
+                const citationItem = { uris: [uri], "suppress-author": true };
+                let locator = '';
+                if (locatorText.trim()) {
+                    const locatorInfo = this.parsePandocLocator(locatorText.trim());
+                    if (locatorInfo.locator) {
+                        citationItem.locator = locatorInfo.locator;
+                        citationItem.label = locatorInfo.label;
+                        locator = locatorInfo.locator;
+                    }
+                }
+
+                const formattedCitation = year
+                    ? `(${year}${locator ? ', ' + locator : ''})`
+                    : '';
+                const citationData = {
+                    citationID: this.generateCitationID(),
+                    properties: { formattedCitation, plainCitation: formattedCitation },
+                    citationItems: [citationItem],
+                    schema: "https://github.com/citation-style-language/schema/raw/master/csl-citation.json"
+                };
+
+                const placeholder = `ZOTERO_PANDOC_${this.generateCitationID()}`;
+                groupFields.set(placeholder, {
+                    type: 'authorInText',
+                    authorName: firstCreator,
+                    citationData,
+                    formattedCitation
+                });
+                citations.push({
+                    startIdx, endIdx,
+                    startRun: charMap[startIdx].runIdx,
+                    startChar: charMap[startIdx].charIdx,
+                    endRun: charMap[endIdx].runIdx,
+                    endChar: charMap[endIdx].charIdx,
+                    replacement: placeholder
+                });
+                convertedCount++;
             }
 
             if (citations.length === 0) return paraXml;
@@ -1055,8 +1235,14 @@ var DOCXScanConvert = {
 
         // Second pass: replace placeholders with Word fields
         let result = withPlaceholders;
-        for (const [placeholder, { citationData, formattedCitation }] of groupFields) {
-            const wordField = this.buildWordField(citationData, formattedCitation);
+        for (const [placeholder, group] of groupFields) {
+            let wordField;
+            if (group.type === 'authorInText') {
+                // Author name goes as plain text, with a space before the suppress-author field
+                wordField = group.authorName + ' ' + this.buildWordField(group.citationData, group.formattedCitation);
+            } else {
+                wordField = this.buildWordField(group.citationData, group.formattedCitation);
+            }
             result = result.replace(placeholder, wordField);
         }
 
@@ -1194,6 +1380,7 @@ var DOCXScanConvert = {
             const afterKey = trimmed.substring(citeMatch.index + citeMatch[0].length).trim();
 
             let locator = '';
+            let label = 'page';
             let suffix = '';
 
             if (afterKey.startsWith(',')) {
@@ -1201,10 +1388,14 @@ var DOCXScanConvert = {
                 const afterComma = afterKey.substring(1).trim();
                 const locatorInfo = this.parsePandocLocator(afterComma);
                 locator = locatorInfo.locator;
+                label = locatorInfo.label;
                 suffix = locatorInfo.suffix;
+            } else if (afterKey) {
+                // No comma separator: treat trailing text as pure suffix
+                suffix = afterKey;
             }
 
-            entries.push({ citekey, prefix, locator, suffix, suppressAuthor });
+            entries.push({ citekey, prefix, locator, label, suffix, suppressAuthor });
         }
 
         return entries;
@@ -1212,22 +1403,23 @@ var DOCXScanConvert = {
 
     /**
      * Parse a pandoc locator string (text after citekey comma)
-     * Recognizes: p., pp., ch., sec., vol., etc.
+     * Recognizes: p., pp., ch., chap., chapter, sec., vol., etc.
+     * Returns { locator, label, suffix } where label is the CSL term
+     * (e.g. "chapter") and locator is the display string (e.g. "ch. 3").
      */
     parsePandocLocator(text) {
-        // Pandoc locator labels
+        // Each entry: pattern to match the prefix, CSL label, display abbreviation
         const locatorPrefixes = [
-            { pattern: /^pp?\.\s*/i, label: 'p.' },
-            { pattern: /^pages?\s+/i, label: 'p.' },
-            { pattern: /^ch(?:apter)?s?\.?\s*/i, label: 'ch.' },
-            { pattern: /^sec(?:tion)?s?\.?\s*/i, label: 'sec.' },
-            { pattern: /^vol(?:ume)?s?\.?\s*/i, label: 'vol.' },
-            { pattern: /^(?:no|nr)\.?\s*/i, label: 'no.' },
-            { pattern: /^para(?:graph)?s?\.?\s*/i, label: 'para.' },
-            { pattern: /^fig(?:ure)?s?\.?\s*/i, label: 'fig.' },
-            { pattern: /^(?:l|ll)\.?\s*/i, label: 'l.' },
-            { pattern: /^n(?:ote)?s?\.?\s*/i, label: 'n.' },
-            { pattern: /^art(?:icle)?s?\.?\s*/i, label: 'art.' },
+            { pattern: /^pp?\.\s*|^pages?\s*/i,                          label: 'page',      display: 'p.' },
+            { pattern: /^ch\.\s*|^chaps?\.\s*|^chapters?\s*/i,           label: 'chapter',   display: 'ch.' },
+            { pattern: /^secs?\.\s*|^sections?\s*/i,                      label: 'section',   display: 'sec.' },
+            { pattern: /^vols?\.\s*|^volumes?\s*/i,                       label: 'volume',    display: 'vol.' },
+            { pattern: /^nos?\.\s*|^numbers?\s*/i,                        label: 'number',    display: 'no.' },
+            { pattern: /^paras?\.\s*|^paragraphs?\s*/i,                   label: 'paragraph', display: 'para.' },
+            { pattern: /^figs?\.\s*|^figures?\s*/i,                       label: 'figure',    display: 'fig.' },
+            { pattern: /^ll?\.\s*/i,                                      label: 'line',      display: 'l.' },
+            { pattern: /^nn?\.\s*|^notes?\s*/i,                           label: 'note',      display: 'n.' },
+            { pattern: /^arts?\.\s*|^articles?\s*/i,                      label: 'article',   display: 'art.' },
         ];
 
         for (const lp of locatorPrefixes) {
@@ -1238,11 +1430,12 @@ var DOCXScanConvert = {
                 const valueMatch = rest.match(/^([\d\-–—,\s]+)(.*)/);
                 if (valueMatch) {
                     return {
-                        locator: lp.label + ' ' + valueMatch[1].trim(),
+                        locator: lp.display + ' ' + valueMatch[1].trim(),
+                        label: lp.label,
                         suffix: valueMatch[2].trim()
                     };
                 }
-                return { locator: lp.label + ' ' + rest.trim(), suffix: '' };
+                return { locator: lp.display + ' ' + rest.trim(), label: lp.label, suffix: '' };
             }
         }
 
@@ -1251,12 +1444,13 @@ var DOCXScanConvert = {
         if (digitMatch) {
             return {
                 locator: 'p. ' + digitMatch[1].trim(),
+                label: 'page',
                 suffix: digitMatch[2].trim()
             };
         }
 
         // No locator found, treat everything as suffix
-        return { locator: '', suffix: text.trim() };
+        return { locator: '', label: 'page', suffix: text.trim() };
     },
 
     /**
@@ -1287,6 +1481,44 @@ var DOCXScanConvert = {
         } catch (e) {
             this.log("Error searching for citationKey: " + e);
             return null;
+        }
+    },
+
+    /**
+     * Convert a full HTTP Zotero URI to the short zu:/zg: form that rtfScan.js
+     * markers require, without needing a live item lookup.
+     */
+    httpURIToShort(uri) {
+        if (uri.startsWith('zu:') || uri.startsWith('zg:') || uri.startsWith('zotero://')) return uri;
+        // Local user library: http://zotero.org/users/local/HASH/items/KEY
+        const localMatch = uri.match(/\/users\/local\/[^/]+\/items\/(.+)/);
+        if (localMatch) return `zu:0:${localMatch[1]}`;
+        // Synced user library: http://zotero.org/users/USERID/items/KEY
+        const userMatch = uri.match(/\/users\/(\d+)\/items\/(.+)/);
+        if (userMatch) return `zu:${userMatch[1]}:${userMatch[2]}`;
+        // Group library: http://zotero.org/groups/GROUPID/items/KEY
+        const groupMatch = uri.match(/\/groups\/(\d+)\/items\/(.+)/);
+        if (groupMatch) return `zg:${groupMatch[1]}:${groupMatch[2]}`;
+        return uri;
+    },
+
+    /**
+     * Build the short-form URI for an item as expected by rtfScan.js markers.
+     * Format: zu:LIB:KEY (user library) or zg:LIB:KEY (group library)
+     * where LIB is 0 for the local user library, the numeric userID for synced,
+     * or the numeric groupID for group libraries.
+     */
+    async buildItemURIShort(item) {
+        const libraryID = item.libraryID;
+        const library = Zotero.Libraries.get(libraryID);
+
+        if (library.libraryType === 'user') {
+            const userID = Zotero.Users.getCurrentUserID();
+            const lib = userID ? String(userID) : '0';
+            return `zu:${lib}:${item.key}`;
+        } else {
+            const groupID = Zotero.Groups.getGroupIDFromLibraryID(libraryID);
+            return `zg:${groupID}:${item.key}`;
         }
     },
 

@@ -64,6 +64,31 @@ describe('citationsToPandoc', () => {
         assert.ok(result.includes('-@jones2019'), 'should have suppress-author on jones');
     });
 
+    it('chapter locator stored as "ch. 3" (pandocToCitationsDirect format) → [@smith2020, ch. 3] not doubled', async () => {
+        // pandocToCitationsDirect stores locator as "ch. 3" (with prefix) and label "chapter".
+        // citationsToPandoc must not prepend "ch. " again, producing "ch. ch. 3".
+        const input = `<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r>` +
+            `<w:r><w:instrText xml:space="preserve"> ADDIN ZOTERO_ITEM CSL_CITATION ` +
+            `{"citationID":"x1","properties":{"plainCitation":"(Smith, 2020)"},` +
+            `"citationItems":[{"uris":["http://zotero.org/users/local/h/items/SMITH2020"],` +
+            `"locator":"ch. 3","label":"chapter"}]} </w:instrText></w:r>` +
+            `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
+            `<w:r><w:t>(Smith, 2020)</w:t></w:r>` +
+            `<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>`;
+        const result = await DOCXScan.citationsToPandoc(input);
+        assert.ok(result.includes('[@smith2020, ch. 3]'), 'should produce [@smith2020, ch. 3]');
+        assert.ok(!result.includes('ch. ch.'), 'should not double the chapter prefix');
+    });
+
+    it('native Zotero locator stored as bare "45" with label "page" → [@smith2020, p. 45]', async () => {
+        // Native Zotero Word plugin stores locator as a bare number without prefix.
+        // citationsToPandoc must prepend the label prefix in that case.
+        const input = fs.readFileSync(path.join(fixturesDir, 'field-zotero-citation.xml'), 'utf8');
+        const result = await DOCXScan.citationsToPandoc(input);
+        assert.ok(result.includes('p. 45'), 'should prepend p. to bare page number');
+        assert.ok(!result.includes('p. p.'), 'should not double the prefix');
+    });
+
     it('non-Zotero field (TOC) → left unchanged', async () => {
         const input = fs.readFileSync(path.join(fixturesDir, 'field-non-zotero.xml'), 'utf8');
         const result = await DOCXScan.citationsToPandoc(input);

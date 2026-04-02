@@ -4,55 +4,70 @@ const DOCXScan = require('../../chrome/content/docxScan.js');
 
 // parsePandocLocator() takes the text after the comma in a pandoc citation
 // (e.g. "p. 45" from [@smith, p. 45]) and splits it into a normalized
-// locator string and any trailing suffix. It recognizes page, chapter,
-// section, volume, and figure prefixes in both abbreviated and full forms.
+// locator string, a CSL label, and any trailing suffix. It recognizes page,
+// chapter, section, volume, and figure prefixes in both abbreviated and full forms.
 
 describe('parsePandocLocator', () => {
-    it('"p. 45" → locator "p. 45", no suffix', () => {
+    it('"p. 45" → locator "p. 45", label "page", no suffix', () => {
         const result = DOCXScan.parsePandocLocator('p. 45');
         assert.equal(result.locator, 'p. 45');
+        assert.equal(result.label, 'page');
         assert.equal(result.suffix, '');
     });
 
     it('"pp. 45-50" → normalized to "p. 45-50" (singular prefix)', () => {
         const result = DOCXScan.parsePandocLocator('pp. 45-50');
         assert.equal(result.locator, 'p. 45-50');
+        assert.equal(result.label, 'page');
         assert.equal(result.suffix, '');
     });
 
     it('"page 45" → normalized to "p. 45"', () => {
         const result = DOCXScan.parsePandocLocator('page 45');
         assert.equal(result.locator, 'p. 45');
+        assert.equal(result.label, 'page');
         assert.equal(result.suffix, '');
     });
 
-    it('"ch. 3" → locator "ch. 3"', () => {
+    it('"ch. 3" → locator "ch. 3", label "chapter"', () => {
         const result = DOCXScan.parsePandocLocator('ch. 3');
         assert.equal(result.locator, 'ch. 3');
+        assert.equal(result.label, 'chapter');
         assert.equal(result.suffix, '');
     });
 
-    it('"chapter 3" → normalized to "ch. 3"', () => {
+    it('"chap. 3" → locator "ch. 3", label "chapter"', () => {
+        const result = DOCXScan.parsePandocLocator('chap. 3');
+        assert.equal(result.locator, 'ch. 3');
+        assert.equal(result.label, 'chapter');
+        assert.equal(result.suffix, '');
+    });
+
+    it('"chapter 3" → normalized to "ch. 3", label "chapter"', () => {
         const result = DOCXScan.parsePandocLocator('chapter 3');
         assert.equal(result.locator, 'ch. 3');
+        assert.equal(result.label, 'chapter');
         assert.equal(result.suffix, '');
     });
 
-    it('"sec. 2" → locator "sec. 2"', () => {
+    it('"sec. 2" → locator "sec. 2", label "section"', () => {
         const result = DOCXScan.parsePandocLocator('sec. 2');
         assert.equal(result.locator, 'sec. 2');
+        assert.equal(result.label, 'section');
         assert.equal(result.suffix, '');
     });
 
-    it('"vol. 2" → locator "vol. 2"', () => {
+    it('"vol. 2" → locator "vol. 2", label "volume"', () => {
         const result = DOCXScan.parsePandocLocator('vol. 2');
         assert.equal(result.locator, 'vol. 2');
+        assert.equal(result.label, 'volume');
         assert.equal(result.suffix, '');
     });
 
-    it('"45" (bare digits) → treated as page number "p. 45"', () => {
+    it('"45" (bare digits) → treated as page number "p. 45", label "page"', () => {
         const result = DOCXScan.parsePandocLocator('45');
         assert.equal(result.locator, 'p. 45');
+        assert.equal(result.label, 'page');
         assert.equal(result.suffix, '');
     });
 

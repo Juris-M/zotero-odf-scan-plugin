@@ -85,4 +85,32 @@ describe('markersToPandoc', () => {
         const result = await DOCXScan.markersToPandoc(input);
         assert.equal(result, '[@smith2020, p. 33, quoting Jones]');
     });
+
+    it('two adjacent markers (ODF multi-cite) → single [@smith2020; @jones2019]', async () => {
+        // rtfScan.js produces adjacent markers for multi-item citations.
+        // They should be merged into one pandoc group, not two separate brackets.
+        const input =
+            '{ | (Smith, 2020; Jones, 2019) | | | http://zotero.org/users/local/testKey/items/SMITH2020}' +
+            '{ | (Smith, 2020; Jones, 2019) | | | http://zotero.org/users/local/testKey/items/JONES2019}';
+        const result = await DOCXScan.markersToPandoc(input);
+        assert.equal(result, '[@smith2020; @jones2019]');
+    });
+
+    it('two adjacent markers with locators → single group with both locators', async () => {
+        const input =
+            '{ | (Smith, 2020; Jones, 2019) | p. 45 | | http://zotero.org/users/local/testKey/items/SMITH2020}' +
+            '{ | (Smith, 2020; Jones, 2019) | ch. 3 | | http://zotero.org/users/local/testKey/items/JONES2019}';
+        const result = await DOCXScan.markersToPandoc(input);
+        assert.equal(result, '[@smith2020, p. 45; @jones2019, ch. 3]');
+    });
+
+    it('non-adjacent markers → separate pandoc cites', async () => {
+        // Markers separated by text are distinct citations, not the same group.
+        const input =
+            '{ | Smith (2020) | | | http://zotero.org/users/local/testKey/items/SMITH2020}' +
+            ' and ' +
+            '{ | Jones (2019) | | | http://zotero.org/users/local/testKey/items/JONES2019}';
+        const result = await DOCXScan.markersToPandoc(input);
+        assert.equal(result, '[@smith2020] and [@jones2019]');
+    });
 });

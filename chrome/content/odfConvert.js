@@ -97,8 +97,8 @@ var ODFScanConvert = {
 
         Zotero.debug("ODFScanConvert: Loaded ODF content, length: " + content.length);
 
-        // Convert pandoc citations to scannable cite markers
-        content = await window.DOCXScanConvert.pandocToMarkers(content);
+        // Convert pandoc citations to scannable cite markers (ODF text mode)
+        content = await window.DOCXScanConvert.pandocToMarkersText(content);
 
         if (isFlat) {
             // Write modified content to a temp file and use it as input for ODF scan
@@ -107,54 +107,35 @@ var ODFScanConvert = {
             Zotero.File.putContents(tempFlatFile, content);
             window.inputFile = tempFlatFile.path;
         } else {
-            // Write modified content.xml back into the ODF ZIP
-            // Copy original to output first, then modify
-            const outputFile = Zotero.File.pathToFile(outputPath);
+            // Write a temp .odt with the markers inserted, then hand it to rtfScan as
+            // inputFile. rtfScan will copy temp→outputFile itself, so inputFile and
+            // outputFile remain distinct and the copy-then-delete pattern in
+            // writeZipfileContent works correctly.
+            const tempOdt = Zotero.getTempDirectory();
+            tempOdt.append("odf-pandoc-input.odt");
+            if (tempOdt.exists()) tempOdt.remove(false);
+            inputFile.copyTo(tempOdt.parent, tempOdt.leafName);
 
-            // Copy input to output
-            try {
-                if (outputFile.exists()) outputFile.remove(false);
-            } catch (e) {
-                if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
-                    throw new Error(
-                        `The output file is locked or open in another application. ` +
-                        `Please close "${outputFile.leafName}" and try again.`
-                    );
-                }
-                throw e;
-            }
-            inputFile.copyTo(outputFile.parent, outputFile.leafName);
+            // Write modified content.xml to a second temp file for zip insertion
+            const tempContentFile = Zotero.getTempDirectory();
+            tempContentFile.append("odf-pandoc-content.xml");
+            Zotero.File.putContents(tempContentFile, content);
 
-            // Write modified content.xml to temp file
-            const tempFile = Zotero.getTempDirectory();
-            tempFile.append("odf-pandoc-content.xml");
-            Zotero.File.putContents(tempFile, content);
-
-            // Replace content.xml in the output ZIP
+            // Replace content.xml in the temp .odt
             const zipWriter = Components.classes["@mozilla.org/zipwriter;1"]
                 .createInstance(Components.interfaces.nsIZipWriter);
-            try {
-                zipWriter.open(outputFile, 0x04); // RDWR
-            } catch (e) {
-                if (e.result === 0x8052000e /* NS_ERROR_FILE_IS_LOCKED */) {
-                    throw new Error(
-                        `The output file is locked or open in another application. ` +
-                        `Please close "${outputFile.leafName}" and try again.`
-                    );
-                }
-                throw e;
-            }
+            zipWriter.open(tempOdt, 0x04); // RDWR
             try {
                 zipWriter.removeEntry("content.xml", false);
-                zipWriter.addEntryFile("content.xml", 9, tempFile, false);
+                zipWriter.addEntryFile("content.xml", 9, tempContentFile, false);
             } finally {
                 zipWriter.close();
             }
 
-            if (tempFile.exists()) tempFile.remove(false);
+            if (tempContentFile.exists()) tempContentFile.remove(false);
 
-            // Now point inputFile to the output (which has markers) for the ODF scan
-            window.inputFile = outputPath;
+            // Point inputFile at the temp .odt; outputFile stays as the final destination
+            window.inputFile = tempOdt.path;
         }
 
         Zotero.debug("ODFScanConvert: Pandoc markers inserted, running ODF scan");
