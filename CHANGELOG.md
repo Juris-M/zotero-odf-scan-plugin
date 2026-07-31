@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [3.2.1] - 2026-05-27
+
+### Fixed
+- Fix parsing markers across footnotes in Word
+
 ## [3.2.0] - 2026-04-02
 
 ### Fixed

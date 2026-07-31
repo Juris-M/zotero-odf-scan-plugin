@@ -319,16 +319,23 @@ var DOCXConverter = {
         const allMatches = [];
         let match;
         while ((match = markerRegex.exec(content)) !== null) {
-            const [fullMatch, prefix, citeRaw, locator, suffix, uri] = match;
+            const [fullMatch, prefixRaw, citeRaw, locatorRaw, suffixRaw, uriRaw] = match;
+            // Word may insert <w:proofErr/> or split runs within a marker's text.
+            // Strip XML tags from each field so the citation data stays clean.
+            const prefix = this.stripXmlTags(prefixRaw);
+            const citeClean = this.stripXmlTags(citeRaw);
+            const locator = this.stripXmlTags(locatorRaw);
+            const suffix = this.stripXmlTags(suffixRaw);
+            const uri = this.stripXmlTags(uriRaw);
             const { cite, suppressAuthor } = CitationUtils.parseMarkerToCitationItem(
-                prefix, citeRaw, locator, suffix, uri
+                prefix, citeClean, locator, suffix, uri
             );
             allMatches.push({
                 fullMatch,
                 start: match.index,
                 end: match.index + fullMatch.length,
-                // raw fields for the definitive parseMarkerToCitationItem call below
-                prefix, citeRaw, locator, suffix, uri,
+                // cleaned fields (XML tags stripped) for use in citation data
+                prefix, citeRaw: citeClean, locator, suffix, uri,
                 // derived fields used for grouping and formattedCitation
                 cite, suppressAuthor
             });
@@ -346,7 +353,12 @@ var DOCXConverter = {
             let j = i + 1;
             while (j < allMatches.length) {
                 const between = content.substring(group[group.length - 1].end, allMatches[j].start);
-                if (between.replace(/<[^>]*>/g, '').trim() === '') {
+                // Only group markers that are within the same paragraph: the between-text
+                // must be pure XML markup (no text) AND must not cross a </w:p> boundary.
+                // Markers in separate footnotes or paragraphs must become separate citations.
+                const onlyMarkup = between.replace(/<[^>]*>/g, '').trim() === '';
+                const sameParagraph = !between.includes('</w:p>');
+                if (onlyMarkup && sameParagraph) {
                     group.push(allMatches[j]);
                     j++;
                 } else {
@@ -684,6 +696,15 @@ var DOCXConverter = {
             `<w:r><w:t xml:space="preserve">`;  // Reopen a text run for any following content
 
         return field;
+    },
+
+    /**
+     * Strip XML/HTML tags from a string, leaving only text content.
+     * Used to clean Word XML markup (e.g. <w:proofErr/>) that Word inserts
+     * within marker text when the marker spans multiple text runs.
+     */
+    stripXmlTags(s) {
+        return s.replace(/<[^>]*>/g, '');
     },
 
     /**
